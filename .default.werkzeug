@@ -1,0 +1,25 @@
+{
+    "root": "./src",
+    "out":  "./dist",
+    "tmp":  "./.wz.tmp",
+    "options": {
+        "sourceMaps": true
+    },
+    "coffee": {
+        "writeFiles": true
+    },
+    "ts": {
+        "tsconfig":false
+    },
+    "sass": {
+
+    },
+    "less": {
+
+    },
+    "packer": {
+        "nga":      false,
+        "chunks":   "./chunk_",
+        "packages": []
+    }
+}

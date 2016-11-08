@@ -1,0 +1,42 @@
+{
+  "name": "werkzeug",
+  "version": "0.0.1",
+  "description": "web project dev tool",
+  "main": "./js/werkzeug.js",
+  "bin": {
+    "wz": "./bin/werkzeug"
+  },
+  "scripts": {
+    "start": "coffee -c -w -m -o ./js ./coffee"
+  },
+  "keywords": [
+    "build tool",
+    "dev tool",
+    "web project"
+  ],
+  "author": "jarends",
+  "homepage": "https://github.com/jarends/werkzeug#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jarends/werkzeug.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jarends/werkzeug/issues"
+  },
+  "license": "Unlicense",
+  "devDependencies": {},
+  "dependencies": {
+    "chokidar": "^1.6.0",
+    "cross-spawn": "^4.0.0",
+    "emap": "0.0.5",
+    "fs-extra": "^0.30.0",
+    "homedir": "^0.6.0",
+    "jsdictionary": "0.0.2",
+    "karg": "^1.0.9",
+    "lodash": "^4.13.1",
+    "ng-annotate": "^1.2.1",
+    "node-sass": "^3.11.2",
+    "typescript": "^1.8.10",
+    "walkdir": "0.0.11"
+  }
+}
