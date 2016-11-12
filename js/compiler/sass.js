@@ -54,7 +54,7 @@
         path = file.path;
         if (!/^_/.test(Path.basename(path))) {
           ++this.openFiles;
-          out = Path.join(base, tmp, Path.relative(base, path));
+          out = Reg.correctTmp(path, base, tmp);
           options.file = path;
           options.outFile = Reg.correctOut(out);
           Sass.render(options, this.onResult);
@@ -67,13 +67,17 @@
       var base, map, out, path, tmp;
       --this.openFiles;
       if (error) {
-        console.log('sass.onError: ', error);
+        this.errors.push({
+          path: error.file,
+          line: error.line,
+          col: error.column,
+          text: error.message
+        });
       } else {
         base = this.cfg.base;
         tmp = this.cfg.tmp;
         path = result.stats.entry;
-        out = Path.join(base, tmp, Path.relative(base, path));
-        out = Reg.correctOut(out);
+        out = Reg.correctTmp(Reg.correctOut(path), base, tmp);
         map = out + '.map';
         FS.ensureFileSync(out);
         FS.ensureFileSync(map);
@@ -98,5 +102,3 @@
   module.exports = new SassCompiler();
 
 }).call(this);
-
-//# sourceMappingURL=sass.js.map

@@ -6,7 +6,7 @@
 
   Path = require('path');
 
-  _ = require('lodash');
+  _ = require('../utils/pimped-lodash');
 
   FSU = require('../utils/fsu');
 
@@ -31,18 +31,19 @@
     }
 
     LessCompiler.prototype.init = function(files, cfg) {
-      var errors, file, i, len;
+      var file, i, len, results;
       this.cfg = cfg;
       console.log('init lessw');
       options['cache-location'] = Path.join(this.cfg.base, this.cfg.tmp, '.sass-cache');
       files = files || [];
       if (files) {
+        results = [];
         for (i = 0, len = files.length; i < len; i++) {
           file = files[i];
-          this.addPath(file.path);
+          results.push(this.addPath(file.path));
         }
+        return results;
       }
-      return errors = this.compileAll();
     };
 
     LessCompiler.prototype.addPath = function(path) {
@@ -152,5 +153,3 @@
   module.exports = new LessCompiler();
 
 }).call(this);
-
-//# sourceMappingURL=less.js.map

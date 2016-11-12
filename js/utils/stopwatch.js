@@ -26,5 +26,3 @@
   module.exports = new StopWatch();
 
 }).call(this);
-
-//# sourceMappingURL=stopwatch.js.map

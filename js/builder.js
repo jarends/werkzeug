@@ -19,5 +19,3 @@
   module.exports = Builder;
 
 }).call(this);
-
-//# sourceMappingURL=builder.js.map

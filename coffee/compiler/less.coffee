@@ -1,6 +1,6 @@
 FS    = require 'fs'
 Path  = require 'path'
-_     = require 'lodash'
+_     = require '../utils/pimped-lodash'
 FSU   = require '../utils/fsu'
 IPC   = require '../utils/ipc'
 
@@ -22,7 +22,7 @@ class LessCompiler
     constructor: () ->
         @files = {}
         @paths = []
-        @ipc   = new IPC process, @
+        @ipc   = new IPC(process, @)
 
 
     init: (files, @cfg) ->
@@ -30,7 +30,6 @@ class LessCompiler
         options['cache-location'] = Path.join @cfg.base, @cfg.tmp, '.sass-cache'
         files                     = files || []
         @addPath file.path for file in files if files
-        errors = @compileAll()
 
 
     addPath: (path) ->

@@ -59,5 +59,3 @@
   module.exports = Watcher;
 
 }).call(this);
-
-//# sourceMappingURL=watcher.js.map

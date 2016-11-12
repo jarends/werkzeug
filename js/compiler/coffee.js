@@ -24,5 +24,3 @@
   })();
 
 }).call(this);
-
-//# sourceMappingURL=coffee.js.map

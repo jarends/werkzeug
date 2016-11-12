@@ -57,5 +57,3 @@
   module.exports = Walker;
 
 }).call(this);
-
-//# sourceMappingURL=walker.js.map

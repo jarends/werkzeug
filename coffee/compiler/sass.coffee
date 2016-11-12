@@ -24,7 +24,7 @@ class SassCompiler
         @cfg         = null
         @errors      = null
         @openFiles   = 0
-        @ipc         = new IPC process, @
+        @ipc         = new IPC(process, @)
 
 
     init: (@cfg) ->
@@ -45,7 +45,7 @@ class SassCompiler
             path = file.path
             if not /^_/.test Path.basename(path)
                 ++@openFiles
-                out             = Path.join base, tmp, Path.relative(base, path)
+                out             = Reg.correctTmp path, base, tmp
                 options.file    = path
                 options.outFile = Reg.correctOut out
                 Sass.render options, @onResult
@@ -58,15 +58,20 @@ class SassCompiler
         --@openFiles
 
         if error
-            console.log 'sass.onError: ', error
+            #console.log 'sass.onError: ', error
+
+            @errors.push
+                path: error.file
+                line: error.line
+                col:  error.column
+                text: error.message
         else
             #console.log 'sass.onResult: ', @openFiles, result
 
             base = @cfg.base
             tmp  = @cfg.tmp
             path = result.stats.entry
-            out  = Path.join base, tmp, Path.relative(base, path)
-            out  = Reg.correctOut(out)
+            out  = Reg.correctTmp Reg.correctOut(path), base, tmp
             map  = out + '.map'
 
             FS.ensureFileSync out

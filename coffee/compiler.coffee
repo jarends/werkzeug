@@ -3,19 +3,20 @@ CP     = require 'child_process'
 IPC    = require './utils/ipc'
 Reg    = require './utils/regex'
 SW     = require './utils/stopwatch'
-TSW    = Path.join __dirname, 'compiler', 'ts'
-ASSETW = Path.join __dirname, 'compiler', 'assets'
-SASSW  = Path.join __dirname, 'compiler', 'sass'
+TS     = Path.join __dirname, 'compiler', 'ts'
+ASSET  = Path.join __dirname, 'compiler', 'assets'
+SASS   = Path.join __dirname, 'compiler', 'sass'
 
+#TODO: use a generalized compiler contruct
 
 class Compiler
 
 
     constructor: (@wz) ->
-        @cfg     = @wz.cfg
-        @ts      = ipc: new IPC(CP.fork(TSW),    @), compiled: false
-        @sass    = ipc: new IPC(CP.fork(SASSW),  @), compiled: false
-        @assets  = ipc: new IPC(CP.fork(ASSETW), @), compiled: false
+        @cfg    = @wz.cfg
+        @ts     = ipc: new IPC(CP.fork(TS),    @), compiled: false
+        @sass   = ipc: new IPC(CP.fork(SASS),  @), compiled: false
+        @assets = ipc: new IPC(CP.fork(ASSET), @), compiled: false
 
         @ts.ipc.send     'init', @cfg
         @sass.ipc.send   'init', @cfg
@@ -23,9 +24,6 @@ class Compiler
 
 
     compile: () ->
-        console.log "compile #{@wz.files.length} files"
-
-        current = []
         ts      = []
         sass    = []
         assets  = []
@@ -35,69 +33,102 @@ class Compiler
         @sass.compiled   = false
         @assets.compiled = false
 
-        SW.start 'ts'
-        SW.start 'sass'
-        SW.start 'assets'
-        SW.start 'total'
+        SW.start 'compiler.ts'
+        SW.start 'compiler.sass'
+        SW.start 'compiler.assets'
+        SW.start 'compiler.all'
+
+        @errors = []
+        @files  = []
 
         for file in @wz.files
-            if file.dirty
 
-                #console.log 'compiler handle file: ', file.path
-
+            if file.dirty or file.errors
                 path    = file.path
                 removed = file.removed
                 used    = false
 
+                f = path:path, removed:removed, error:false
+
                 # add removed files also to update ts file map
                 if Reg.testTS(path)
-                    ts.push file
+                    ts.push f
                     used = true
                 # ignore removed files
                 else if Reg.testSass(path) and not removed
-                    sass.push file
+                    sass.push f
                     used = true
                 # ignore removed files in this else -> all remoed will be added separate
                 else if path.indexOf(root) == 0 and not removed
-                    assets.push file
+                    assets.push f
                     used = true
 
                 # add all removed to assets
                 if removed
-                    assets.push file
+                    assets.push f
                     used = true
 
                 if used
-                    current.push path:file.path, removed:file.removed
+                    @files.push f
 
-        #console.log 'compile assets: ', assets.length
         if assets.length
             @assets.ipc.send 'compile', assets
         else
             @assets.compiled = true;
 
-        #console.log 'compile sass: ', sass.length
         if sass.length
             @sass.ipc.send 'compile', sass
         else
             @sass.compiled = true
 
-        #console.log 'compile ts: ', ts.length
         if ts.length
             @ts.ipc.send 'compile', ts
         else
             @ts.compiled = true
 
-        current
+        l = @files.length
+        if l
+            console.log "start compiling... (#{l} #{if l > 1 then 'files' else 'file'})".cyan
+        else
+            @wz.compiled()
+
+        null
+
+
 
 
     compiled: (comp, errors) ->
-        console.log "#{comp} compiled in #{SW.stop comp}ms #{if errors and errors.length then 'with ' + errors.length + ' errors' else 'without errors'}", errors
         @[comp].compiled = true
-        if @ts.compiled && @sass.compiled and @assets.compiled
-            console.log "total compile time: #{SW.stop 'total'}ms "
+
+        for error in errors
+            @errors.push error
+            path        = error.path
+            file        = @wz.fileMap[path]
+            if file
+                file.errors = true
+            #TODO: handle error somehow
+            else
+                #console.log 'error in file, but file not in root: ', path
+
+        t = SW.stop 'compiler.' + comp
+        l = errors.length
+        if l > 0
+            console.log "#{comp} compiled in #{t}ms with #{errors.length} #{if l > 1 then 'errors' else 'error'}".red
+        else
+            console.log "#{comp} compiled in #{t}ms without errors".green
+
+        if @ts.compiled and @sass.compiled and @assets.compiled
+            t = SW.stop 'compiler.all'
+            l = @errors.length
+            if @errors.length > 0
+                console.log "all compiled in #{t}ms with #{l} #{if l > 1 then 'errors' else 'error'}".red
+            else
+                console.log "all compiled in #{t}ms without errors".green
+
             @wz.compiled()
+
         null
+
 
 
 

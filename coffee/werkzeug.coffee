@@ -1,38 +1,68 @@
 Emitter  = require 'events'
 FS       = require 'fs'
 Path     = require 'path'
-FSU      = require './utils/fsu'
-SW       = require './utils/stopwatch'
+Colors   = require 'colors'
 Config   = require './config'
+Paths    = require './utils/paths'
+Server   = require './server'
 Walker   = require './walker'
 Watcher  = require './watcher'
 Compiler = require './compiler'
 Packer   = require './packer'
 Builder  = require './builder'
+FSU      = require './utils/fsu'
+SW       = require './utils/stopwatch'
+
+
+###
+    black
+    red
+    green
+    yellow
+    blue
+    magenta
+    cyan
+    white
+    gray
+    grey
+###
+
+
+Colors.setTheme
+    error: 'red'
+
+
+#TODO: enable cli flag for different configs
+# .wz.prod -> wz prod
+# .wz.dev  -> wz dev
 
 
 class Werkzeug extends Emitter
 
-    # TODO: add config paths dynamically
+    # TODO: add config paths dynamically to ignores
     @ignores     = 'node_modules$|\\.DS_Store$|dist$|\\.idea$|\\.git$|gulpfile\\.coffee$|Gruntfile\\.coffee$|\\.wz\\.tmp$'
     @interests   = '\\.coffee$|\\.ts$|\\.sass$|\\.scss$|\\.less$'
-    @updateDelay = 100
+    @updateDelay = 500
 
 
     constructor: (base) ->
         super
 
-        SW.start 'startup'
+        console.log 'werkzeug starting...'.cyan
+
+        SW.start 'wz.startup'
 
         @cfg         = new Config(base)
+        @paths       = new Paths (@cfg)
+        @server      = new Server  (@)
         @walker      = new Walker  (@)
         @watcher     = new Watcher (@)
         @compiler    = new Compiler(@)
         @packer      = new Packer  (@)
         @builder     = new Builder (@)
-        @ignores     = new RegExp "(#{WZ.ignores})"
-        @interests   = new RegExp "(#{WZ.interests})"
-        @current     = []
+        @ignores     = new RegExp("(#{WZ.ignores})")
+        @interests   = new RegExp("(#{WZ.interests})")
+        @errors      = []
         @files       = []
         @fileMap     = {}
         @idle        = true
@@ -51,6 +81,8 @@ class Werkzeug extends Emitter
 
     watch: () ->
         return if not @idle || @watcher.watching
+        #TODO: make server optional
+        @server.init()
         @watcher.watch()
         null
 
@@ -71,8 +103,8 @@ class Werkzeug extends Emitter
     compile: () ->
         return if not @idle
         @idle = false
-        SW.start 'update'
-        @current = @compiler.compile()
+        SW.start 'wz.update'
+        @compiler.compile()
         @cleanFiles()
         @dirty = false
         null
@@ -87,7 +119,7 @@ class Werkzeug extends Emitter
     pack: () ->
         return if not @idle
         @idle = false
-        @packer.pack(@current)
+        @packer.pack(@compiler.files)
         null
 
 
@@ -95,15 +127,19 @@ class Werkzeug extends Emitter
         @idle = true
         if not @initialized
             @initialized = true
-            console.log "startup in #{SW.stop 'startup'}ms"
-        else
-            console.log "update in #{SW.stop 'update'}ms"
+            if @watcher.watching
+                console.log "werkzeug startup in #{SW.stop 'wz.startup'}ms".cyan
+            else
+                console.log "werkzeug single run in #{SW.stop 'wz.startup'}ms".cyan
+
+        else if @compiler.files and @compiler.files.length
+            console.log "werkzeug update in #{SW.stop 'wz.update'}ms".cyan
 
         if @watcher.watching
             if @dirty
                 @update()
-            else
-                console.log 'start watching ...'
+            else if @compiler.files and @compiler.files.length
+                console.log 'start watching ...'.cyan
         else
             @terminate()
         null
@@ -124,6 +160,7 @@ class Werkzeug extends Emitter
 
 
     cleanFiles: () ->
+        @errors = []
         for path, file of @fileMap
             if file.dirty
                 if file.removed
@@ -134,6 +171,7 @@ class Werkzeug extends Emitter
                     file.dirty   = false
                     file.added   = false
                     file.changed = false
+                    file.errors  = null
         null
 
 
@@ -146,14 +184,16 @@ class Werkzeug extends Emitter
 
         #console.log 'fileAdded: ', path
 
-        file.path  = path
-        file.added = Date.now()
-        file.dirty = true
+        file.path   = path
+        file.added  = Date.now()
+        file.dirty  = true
+        file.errors = null
         @update()
         null
 
 
     fileChanged: (path) ->
+
         file = @fileMap[path]
         return if not file
 
@@ -161,6 +201,7 @@ class Werkzeug extends Emitter
 
         file.changed = Date.now()
         file.dirty   = true
+        file.errors  = null
         @update()
         null
 
@@ -177,6 +218,14 @@ class Werkzeug extends Emitter
         null
 
 
+    getIn: (type, path) ->
+        @paths.getIn type, path
+
+
+    getOut: (type, path) ->
+        @paths.getOut type, path
+
+
     ignore: (path) ->
         @ignores.test path
 
@@ -190,6 +239,7 @@ class Werkzeug extends Emitter
         clearTimeout @updateTimeout
         @compiler.exit()
         @packer.exit()
+        @server.exit()
         process.removeAllListeners()
         setTimeout () -> process.exit 0
         null

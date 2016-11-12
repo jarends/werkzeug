@@ -179,5 +179,3 @@
   return new Pack();
 
 }).call(this);
-
-//# sourceMappingURL=pack.js.map

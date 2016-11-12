@@ -12,7 +12,7 @@ class AssetCompiler
         @cfg       = null
         @errors    = null
         @openFiles = 0
-        @ipc       = new IPC process, @
+        @ipc       = new IPC(process, @)
 
 
     init: (@cfg) ->
@@ -53,9 +53,9 @@ class AssetCompiler
         out = Reg.correctOut out
         map = out + '.map'
 
-        FS.removeSync(map) if FSU.isFile map
         FS.remove out, (error) =>
             --@openFiles
+            FS.removeSync(map) if FSU.isFile map
             @errors.push {path:path, error:error} if error
             @compiled() if @openFiles == 0
             null

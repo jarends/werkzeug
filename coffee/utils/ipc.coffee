@@ -1,6 +1,6 @@
 Emitter = require 'events'
 EMap    = require 'emap'
-_       = require 'lodash'
+_       = require '../utils/pimped-lodash'
 
 
 class IPC extends Emitter
@@ -10,9 +10,7 @@ class IPC extends Emitter
 
 
     constructor: (process, @owner) ->
-        @emap   = new EMap()
-        @sync   = false
-        @result = null
+        @emap = new EMap()
         @init process, @owner if process
 
 
@@ -20,6 +18,7 @@ class IPC extends Emitter
         @emap.all() if @process
         @process = process
         @emap.map process, 'message',    @messageHandler,    @
+        #TODO: react to events - maybe restart forked process or entire app
         @emap.map process, 'close',      @closeHandler,      @
         @emap.map process, 'disconnect', @disconnectHandler, @
         @emap.map process, 'error',      @errorHandler,      @
@@ -49,6 +48,8 @@ class IPC extends Emitter
         if @owner and _.isFunction @owner[type]
             try
                 @owner[type].apply @owner, args
+
+            #TODO: handle error - maybe restart forked process or entire app
             catch e
                 console.log "IPC ERROR: can not handle type '#{type}' for owner '#{@owner}': ", e
 

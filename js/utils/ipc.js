@@ -9,7 +9,7 @@
 
   EMap = require('emap');
 
-  _ = require('lodash');
+  _ = require('../utils/pimped-lodash');
 
   IPC = (function(superClass) {
     extend(IPC, superClass);
@@ -21,8 +21,6 @@
     function IPC(process, owner) {
       this.owner = owner;
       this.emap = new EMap();
-      this.sync = false;
-      this.result = null;
       if (process) {
         this.init(process, this.owner);
       }
@@ -110,5 +108,3 @@
   module.exports = IPC;
 
 }).call(this);
-
-//# sourceMappingURL=ipc.js.map

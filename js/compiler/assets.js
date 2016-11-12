@@ -71,12 +71,12 @@
       var map;
       out = Reg.correctOut(out);
       map = out + '.map';
-      if (FSU.isFile(map)) {
-        FS.removeSync(map);
-      }
       FS.remove(out, (function(_this) {
         return function(error) {
           --_this.openFiles;
+          if (FSU.isFile(map)) {
+            FS.removeSync(map);
+          }
           if (error) {
             _this.errors.push({
               path: path,
@@ -103,5 +103,3 @@
   module.exports = new AssetCompiler();
 
 }).call(this);
-
-//# sourceMappingURL=assets.js.map

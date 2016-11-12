@@ -1,25 +1,39 @@
 {
     "root": "./src",
-    "out":  "./dist",
-    "tmp":  "./.wz.tmp",
+    "tmp": "./.wz.tmp",
+
+    "in":  "./src",
+    "out": "./.wz.tmp",
+
     "options": {
         "sourceMaps": true
     },
     "coffee": {
-        "writeFiles": true
     },
     "ts": {
-        "tsconfig":false
+        "in":  "./src",
+        "out": "./.wz.tmp"
     },
     "sass": {
-
+        "in":  "./src",
+        "out": "./.wz.tmp"
     },
     "less": {
-
+    },
+    "stylus": {
+    },
+    "assets": {
+        "in":  "./src",
+        "out": "./.wz.tmp"
+    },
+    "tslint": {
+        "ignoreInitial": true
     },
     "packer": {
-        "nga":      false,
-        "chunks":   "./chunk_",
+        "nga": false,
+        "bigChunks": true,
+        "chunks": "./chunk_",
+        "loaderPrefix":"^es6-promise\\!",
         "packages": []
     }
 }

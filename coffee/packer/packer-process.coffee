@@ -1,9 +1,12 @@
-FS   = require 'fs'
-Path = require 'path'
-nga  = require 'ng-annotate/ng-annotate-main'
-Dict = require 'jsdictionary'
-Reg  = require '../utils/regex'
-IPC  = require '../utils/ipc'
+FS           = require 'fs'
+Path         = require 'path'
+nga          = require 'ng-annotate/ng-annotate-main'
+Dict         = require 'jsdictionary'
+Babel        = require 'babel-core'
+Babel_es2015 = require 'babel-preset-es2015'
+Paths        = require '../utils/paths'
+Reg          = require '../utils/regex'
+IPC          = require '../utils/ipc'
 
 
 PACK_CODE   = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
@@ -60,8 +63,16 @@ class Indexer
         ++@current
 
     remove: (index) ->
-        @free.unshift index if @free.indexOf(index) == -1
+        @free.unshift index
         null
+
+
+
+
+babelOptions =
+    ast:     false
+    compact: false
+    presets: [Babel_es2015]
 
 
 
@@ -78,16 +89,20 @@ class Packer
         @openPacks  = 0     # packaging: number of currently writing packages
         @packed     = null  # packaging: map of already packed files
         @loaded     = null  # packaging: map of chunks loaded by a loader
-        @ipc        = new IPC process, @
+        @packs      = null  # packaging: list of current packs
+        @chunks     = null  # packaging: list of current chunks
+        @ipc        = new IPC(process, @)
 
 
     init: (@cfg) ->
         @id  = Math.random() + '_' + Date.now()
         @nga = @cfg.packer.nga or false
+        @paths = new Paths(@cfg)
         null
 
 
     readPackages: () ->
+        @errors  = []
         packages = @cfg.packer?.packages or []
         root     = Path.join @cfg.base, @cfg.tmp, @cfg.root
         for cfg in packages
@@ -97,21 +112,27 @@ class Packer
 
 
     update: (files) ->
-        console.log 'packer.update: ', files
-
+        errors   = @errors or []
+        @errors  = []
         base = @cfg.base
         tmp  = Path.join base, @cfg.tmp
         for f in files
             path = Reg.correctTmp Reg.correctOut(f.path), base, tmp
-
-            console.log 'update: ', path
-
             file = @fileMap[path]
             if file
                 if file.removed
                     @remove file
                 else
+                    # indexers unshift/shift keeps parent linking correct
                     @clear file
+                    @readFile path
+
+        for error in errors
+            path = error.path
+            file = @fileMap[path]
+            if file
+                @clear file
+                @readFile path
 
         if @openFiles == 0
             @completed()
@@ -120,7 +141,7 @@ class Packer
 
 
     remove: (file) ->
-        @clear file, false
+        @clear file
 
         path = file.path
         for ppath in file.ref
@@ -130,7 +151,7 @@ class Packer
         null
 
 
-    clear: (file, read = true) ->
+    clear: (file) ->
         path = file.path
         for rpath of file.req
             rfile = @fileMap[rpath]
@@ -145,29 +166,36 @@ class Packer
                     delete @loaders[rpath]
             delete file.reqAsL[rpath]
 
-        @fileMap[path] = null
+        delete @fileMap[path]
         @indexer.remove file.index
-
-        @readFile path if read
         null
 
 
 
 
     completed: () =>
-        @ipc.send 'packed', []
+
+        for pack in @packs
+            console.log 'pack: ', pack.numModules, pack.file.path
+
+        for chunk in @chunks
+            console.log 'chunk: ', chunk.index, chunk.numModules, chunk.file.path
+
+        console.log 'total modules: ', @totalModules
+        @ipc.send 'packed', @errors
         null
 
 
 
 
     writePackages: () ->
-        @packed  = {}
-        @loaded  = {}
-        packages = @cfg.packer.packages or []
-        dest     = Path.join @cfg.base, @cfg.tmp, @cfg.root
-        l        = packages.length
-        packs    = []
+        @totalModules = 0
+        @packed       = {}
+        @loaded       = {}
+        @packs        = []
+        @chunks       = []
+        packages      = @cfg.packer.packages or []
+        dest          = Path.join @cfg.base, @cfg.tmp, @cfg.root
 
         #TODO: delete existing pack and chunk files
 
@@ -180,16 +208,17 @@ class Packer
             path = Path.join dest, pack.in
             file = @fileMap[path]
             p =
-                file:    file
-                index:   i
-                total:   l
-                id:      @id
-                out:     Path.join dest, pack.out
-                req:     {}
-                loaders: {}
-                code:    ''
+                file:       file
+                index:      i
+                total:      packages.length
+                id:         @id
+                out:        Path.join dest, pack.out
+                req:        {}
+                loaders:    {}
+                code:       ''
+                numModules: 0
 
-            packs.push p
+            @packs.push p
             @gatherReq p, file
 
         for path of @loaders
@@ -197,21 +226,26 @@ class Packer
             @gatherChunks loader, loader
 
         for path of @loaded
-            @cleanUpChunks @fileMap[path], packs
+            @cleanupChunks @fileMap[path]
 
-        for p in packs
+        for p in @packs
             @writePack p
 
         for path of @loaders
             loader = @fileMap[path]
             chunk  = @getChunkPath loader
             p =
-                file:  loader
-                id:    @id
-                out:   Path.join dest, chunk
-                chunk: chunk
-                code:  ''
+                file:       loader
+                index:      loader.index
+                id:         @id
+                out:        Path.join dest, chunk
+                chunk:      chunk
+                code:       ''
+                numModules: 0
+
+            @chunks.push p
             @writeChunk p
+
         null
 
 
@@ -224,13 +258,13 @@ class Packer
             return null
         @packed[file.index] = true
         p.req[file.path]    = true
-        for path of file.req
-            rfile = @fileMap[path]
+        for rpath of file.req
+            rfile = @fileMap[rpath]
             if rfile and not @packed[rfile.index]
-                if not (@loaders[path] and file.reqAsL[path])
-                    @gatherReq(p, rfile)
-                else
-                    p.loaders[path] = true
+                # add all loaders to the pack -> used by cleanupChunks
+                for lpath of rfile.reqAsL
+                    p.loaders[lpath] = true
+                @gatherReq(p, rfile)
         null
 
 
@@ -244,20 +278,25 @@ class Packer
         null
 
 
-    cleanUpChunks: (file, packs) ->
+    cleanupChunks: (file) ->
+        # returns a loader, if the file is required by exactly one loader
         loader = @getLoader file
         path   = file.path
         packed = @packed[file.index]
-        if packed or not loader
+        # remove file from loaders, if already packed
+        # remove also if required by more than one loader in case bigChunks = false
+        if packed or (not @cfg.packer.bigChunks and not loader)
             for lpath of file.loaders
                 loader = @fileMap[lpath]
                 delete loader.parts[path]
                 delete file.loaders[lpath]
+                # add file to the first matching pack if not already packed
                 if not packed
-                    for p in packs
+                    for p in @packs
                         if p.loaders[lpath]
-                            p.req[path] = true
-                            packed      = true
+                            p.req[path]         = true
+                            @packed[file.index] = true
+                            packed              = true
                             break
         null
 
@@ -275,10 +314,12 @@ class Packer
         p.code = p.code.slice 0, -3
         p.code = getPackCode(p)
         ++@openPacks
+
+        #TODO: handle write errors
         FS.writeFile p.out, p.code, 'utf8', (error) =>
             --@openPacks
             if error
-                console.log 'packer.writePack: pack write error: ', p.out #error.stack
+                console.log 'packer.writePack: pack write error: ', p.out
             if @openPacks == 0
                 @completed()
             null
@@ -290,10 +331,12 @@ class Packer
         p.code = p.code.slice 0, -3
         p.code = getChunkCode(p)
         ++@openPacks
+
+        #TODO: handle write errors
         FS.writeFile p.out, p.code, 'utf8', (error) =>
             --@openPacks
             if error
-                console.log 'packer.writeChunk: chunk write error: ', p.out #error.stack
+                console.log 'packer.writeChunk: chunk write error: ', p.out
             if @openPacks == 0
                 @completed()
             null
@@ -301,6 +344,8 @@ class Packer
 
 
     addPackSrc: (p, file) ->
+        ++@totalModules
+        ++p.numModules
         source = file.source
         source = nga(source, add:true).src if @nga
 
@@ -351,9 +396,19 @@ class Packer
             --@openFiles
             if error
                 file.error = error
-                console.log 'packer.readFile: not found: ', path #error.stack
+                @errors.push
+                    path: path
+                    line: 0
+                    col:  0
+                    text: 'file read error'
             else
-                file.source = source
+                # use babel if file is in node-modules and isn't an umd module and has an import statement
+                if /node_modules/.test(path) and not /\.umd\./.test(path) and /import /g.test(source)
+                    result      = Babel.transform source, babelOptions
+                    console.log 'babel transformed: ' + path
+                    file.source = result.code
+                else
+                    file.source = source
                 @parseFile file
             if @openFiles == 0
                 @writePackages()
@@ -364,13 +419,17 @@ class Packer
 
 
     parseFile: (file) ->
-        base  = Path.dirname file.path
-        regex = /require\s*\(\s*('|")(.*?)('|")\s*\)/g
+        path   = file.path
+        base   = Path.dirname path
+        #regex  = /^([^\/]|(\/(?!\/)))*?require\s*\(\s*('|")(.*?)('|")\s*\)/gm
+        regex  = /require\s*\(\s*('|")(.*?)('|")\s*\)/gm
+        regPos = 2
+        loaderRegex = new RegExp(@cfg.packer.loaderPrefix)
 
         #while result = regex.exec file.source
         file.source = file.source.replace(regex, (args...) =>
-            name     = Reg.correctOut(args[2])
-            isLoader = /^es6-promise\!/.test name
+            name     = Reg.correctOut(args[regPos])
+            isLoader = loaderRegex.test name
             name     = name.replace /^es6-promise\!/, '' if isLoader
             isRel    = /\.|\//.test(name[0])
 
@@ -389,12 +448,21 @@ class Packer
                 if isLoader
                     rpath      = rfile.path
                     loaderRefs = @loaders[rpath] or @loaders[rpath] = {}
-                    loaderRefs[file.path] = true
-                    file.reqAsL[rpath]    = true
+                    loaderRefs[path]   = true
+                    file.reqAsL[rpath] = true
+                    # remove linking to enable chunks
+                    delete file.req[rpath]
+                    delete rfile.ref[path]
+
                     return "require(#{rfile.index}, '#{@getChunkPath rfile}')"
                 return "require(#{rfile.index})"
             else
-                console.log 'packer.parseFile: module "' + name + '" not found - required by: ' + file.path
+                @errors.push
+                    path: path
+                    line: 0
+                    col:  0
+                    text: 'packer.parseFile: module "' + name + '" not found'
+
             args[0])
         null
 

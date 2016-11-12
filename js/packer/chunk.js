@@ -35,5 +35,3 @@
   return new Chunk();
 
 }).call(this);
-
-//# sourceMappingURL=chunk.js.map

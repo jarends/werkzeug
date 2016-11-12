@@ -19,7 +19,7 @@ class Walker
 
     walk: () ->
         console.log 'walk'
-        if(@w)
+        if @w
             @w.end()
             @emap.all()
 

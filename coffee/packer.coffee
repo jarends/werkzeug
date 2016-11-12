@@ -1,7 +1,9 @@
+Path   = require 'path'
 CP     = require 'child_process'
 SW     = require './utils/stopwatch'
 IPC    = require './utils/ipc'
-PACKER = __dirname + '/packer/packer'
+PACKER = Path.join __dirname, 'packer', 'packer-process'
+
 
 class Packer
 
@@ -9,32 +11,41 @@ class Packer
     constructor: (@wz) ->
         @initialized = false
         @cfg         = @wz.cfg
-        @packer      = new IPC CP.fork(PACKER), @
-        @inited      = false
+        @packer      = new IPC(CP.fork(PACKER), @)
 
         @packer.send 'init', @cfg
 
 
     pack: (files) ->
-        console.log 'pack!!!'
-        SW.start 'packer'
-        if not @initialized
-            @packer.send 'readPackages'
+        if files and files.length
+            console.log "start packing...".cyan
+            SW.start 'packer'
+            if not @initialized
+                @packer.send 'readPackages'
+            else
+                @packer.send 'update', files
         else
-            @packer.send 'update', files
-        #setTimeout () => @wz.packed()
+            @wz.packed()
         null
 
 
     packed: (errors) ->
-        console.log "packed in #{SW.stop 'packer'}ms"
+        t = SW.stop 'packer'
+        l = errors.length
+        if l > 0
+            console.log "packed in #{t}ms with #{l} #{if l > 1 then 'errors' else 'error'}".red, errors
+        else
+            console.log "packed in #{t}ms without errors".green
+
         @initialized = true
+        @errors      = errors
         @wz.packed()
         null
 
 
     exit: () ->
         @packer.exit()
+        null
 
 
 module.exports = Packer

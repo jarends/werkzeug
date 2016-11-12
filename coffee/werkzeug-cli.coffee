@@ -27,7 +27,6 @@ watch   = args.watch
 build   = args.build
 pack    = args.pack    or watch or build
 compile = args.compile or watch or pack
-watch   = not compile  or watch
 
 #console.log 'wz.cfg: ', wz.cfg
 

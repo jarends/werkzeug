@@ -18,8 +18,6 @@
 
   compile = args.compile || watch || pack;
 
-  watch = !compile || watch;
-
   if (watch) {
     wz.watch();
   } else {
@@ -27,5 +25,3 @@
   }
 
 }).call(this);
-
-//# sourceMappingURL=werkzeug-cli.js.map

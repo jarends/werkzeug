@@ -8,7 +8,7 @@
 
   Home = require('homedir');
 
-  _ = require('lodash');
+  _ = require('./utils/pimped-lodash');
 
   Config = (function() {
     function Config(base, cfgOrPath) {
@@ -27,7 +27,7 @@
         cfg = FSU.require(Home(), '.werkzeug');
       }
       def = FSU.require(__dirname, '..', '.default.werkzeug');
-      _.assign(this, def, cfg);
+      _.deepMerge(this, def, cfg);
     }
 
     return Config;
@@ -37,5 +37,3 @@
   module.exports = Config;
 
 }).call(this);
-
-//# sourceMappingURL=config.js.map

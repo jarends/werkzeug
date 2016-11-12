@@ -50,5 +50,3 @@
   module.exports = r;
 
 }).call(this);
-
-//# sourceMappingURL=regex.js.map
