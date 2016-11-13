@@ -1,4 +1,4 @@
-FS  = require 'fs-extra'
+FSE = require 'fs-extra'
 FSU = require '../utils/fsu'
 IPC = require '../utils/ipc'
 PH  = require '../utils/path-helper'
@@ -36,10 +36,9 @@ class AssetCompiler
 
     copy: (path) ->
         out = PH.outFromIn @cfg, 'assets', path
-        FS.copy path, out, (error) =>
-            --@openFiles
+        FSE.copy path, out, (error) =>
             @errors.push {path:path, error:error} if error
-            @compiled() if @openFiles == 0
+            @compiled() if --@openFiles == 0
             null
         null
 
@@ -48,11 +47,11 @@ class AssetCompiler
         out = PH.outFromIn @cfg, null, path, true
         map = out + '.map'
 
-        FS.remove out, (error) =>
+        FSE.remove out, (error) =>
             --@openFiles
             if FSU.isFile map
                 ++@openFiles
-                FS.remove map, (error) =>
+                FSE.remove map, (error) =>
                     --@openFiles
                     @errors.push {path:map, error:error} if error
                     @compiled() if @openFiles == 0

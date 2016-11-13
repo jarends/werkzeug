@@ -1,5 +1,6 @@
 Path  = require 'path'
-FS    = require 'fs-extra'
+FSE   = require 'fs-extra'
+FS    = require 'fs'
 Sass  = require 'node-sass'
 IPC   = require '../utils/ipc'
 PH    = require '../utils/path-helper'
@@ -33,16 +34,11 @@ class SassCompiler
                 options.file    = path
                 options.outFile = PH.outFromIn @cfg, 'sass', path, true
                 Sass.render options, @onResult
-
         null
 
 
     onResult: (error, result) =>
-
-        --@openFiles
-
         if error
-            #console.log 'sass.onError: ', error
             @errors.push
                 path: error.file
                 line: error.line
@@ -53,20 +49,16 @@ class SassCompiler
             out  = PH.outFromIn @cfg, 'sass', path, true
             map  = out + '.map'
 
-            #console.log 'sass write css: ', out
-
-            FS.ensureFileSync out
-            FS.ensureFileSync map
+            FSE.ensureFileSync out
+            FSE.ensureFileSync map
             FS.writeFileSync out, result.css, 'utf8'
             FS.writeFileSync map, result.map, 'utf8'
 
-        if @openFiles == 0
-            @compiled()
+        @compiled() if --@openFiles == 0
         null
 
 
     compiled: () ->
-        #console.log 'sass.compiled!!!'
         @initialized = true
         @ipc.send 'compiled', 'sass', @errors
 

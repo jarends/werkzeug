@@ -1,6 +1,5 @@
 Emitter  = require 'events'
 FS       = require 'fs'
-Path     = require 'path'
 Colors   = require 'colors'
 Config   = require './config'
 Server   = require './server'
@@ -32,11 +31,17 @@ Colors.setTheme
     error: 'red'
 
 
+#TODO: implement sourcemaps!!!
+
 #TODO: enable cli flag for different configs
 # .wz.prod -> wz prod
 # .wz.dev  -> wz dev
 
 #TODO: watch current wz config and restart app on change
+
+#TODO: make sourcemaps optional
+
+#TODO: implement reasonable config params
 
 
 class Werkzeug extends Emitter
@@ -73,7 +78,6 @@ class Werkzeug extends Emitter
         # TODO: append @cfg paths to ignores (dest, tmp, ...)
 
         paths = PH.getPaths(@cfg)
-        console.log 'clear out paths: ', paths
         for path in paths
             FSU.rmDir path if FSU.isDir path
             FS.mkdirSync path

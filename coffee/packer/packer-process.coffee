@@ -390,7 +390,6 @@ class Packer
 
         ++@openFiles
         FS.readFile path, 'utf8', (error, source) =>
-            --@openFiles
             if error
                 file.error = error
                 @errors.push
@@ -399,6 +398,7 @@ class Packer
                     col:  0
                     text: 'file read error'
             else
+                #TODO: think about a better detection
                 # use babel if file is in node-modules and isn't an umd module and has an import statement
                 if /node_modules/.test(path) and not /\.umd\./.test(path) and /import /g.test(source)
                     result      = Babel.transform source, babelOptions
@@ -407,8 +407,8 @@ class Packer
                 else
                     file.source = source
                 @parseFile file
-            if @openFiles == 0
-                @writePackages()
+
+            @writePackages() if --@openFiles == 0
             null
         file
 

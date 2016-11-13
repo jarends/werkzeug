@@ -2,6 +2,8 @@ Path       = require 'path'
 Express    = require 'express'
 BodyParser = require 'body-parser'
 Portfinder = require 'portfinder'
+_          = require 'lodash'
+FSU        = require '../utils/fsu'
 IPC        = require '../utils/ipc'
 PH         = require '../utils/path-helper'
 
@@ -27,7 +29,11 @@ class Server
 
         # mod rewrite fake
         @express.get '*', (request, response, next) =>
-            response.sendFile Path.join(@root, '/index.html')
+            path = Path.join @cfg.base, request.path
+            if FSU.isFile path
+                response.sendFile path
+            else
+                response.sendFile Path.join(@root, '/index.html')
 
         #TODO: make the port configurable
         Portfinder.basePort = 3001

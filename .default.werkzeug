@@ -1,36 +1,22 @@
 {
-    "root": "./src",
-    "tmp": "./.wz.tmp",
-
     "in":  "./src",
     "out": "./.wz.tmp",
 
     "options": {
         "sourceMaps": true
     },
+
     "coffee": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "ts": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "sass": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "less": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "stylus": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "assets": {
-        "in":  "./src",
-        "out": "./.wz.tmp"
     },
     "tslint": {
         "ignoreInitial": true

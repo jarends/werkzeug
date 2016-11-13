@@ -4,9 +4,11 @@ IPC    = require './utils/ipc'
 SW     = require './utils/stopwatch'
 PH     = require './utils/path-helper'
 TS     = Path.join __dirname, 'compiler', 'ts'
+COFFEE = Path.join __dirname, 'compiler', 'coffee'
 ASSET  = Path.join __dirname, 'compiler', 'assets'
 SASS   = Path.join __dirname, 'compiler', 'sass'
-#TODO: use a generalized compiler contruct
+
+#TODO: use a generalized compiler construct
 
 class Compiler
 
@@ -14,28 +16,34 @@ class Compiler
     constructor: (@wz) ->
         @cfg    = @wz.cfg
         @ts     = ipc: new IPC(CP.fork(TS),    @), compiled: false
+        @coffee = ipc: new IPC(CP.fork(COFFEE),@), compiled: false
         @sass   = ipc: new IPC(CP.fork(SASS),  @), compiled: false
         @assets = ipc: new IPC(CP.fork(ASSET), @), compiled: false
 
         @ts.ipc.send     'init', @cfg
+        @coffee.ipc.send 'init', @cfg
         @sass.ipc.send   'init', @cfg
         @assets.ipc.send 'init', @cfg
 
 
     compile: () ->
         ts        = []
+        coffee    = []
         sass      = []
         assets    = []
 
-        tsRoot    = PH.getIn @cfg, 'ts'
-        sassRoot  = PH.getIn @cfg, 'sass'
-        assetRoot = PH.getIn @cfg, 'assets'
+        tsRoot     = PH.getIn @cfg, 'ts'
+        coffeeRoot = PH.getIn @cfg, 'coffee'
+        sassRoot   = PH.getIn @cfg, 'sass'
+        assetsRoot = PH.getIn @cfg, 'assets'
 
         @ts.compiled     = false
+        @coffee.compiled = false
         @sass.compiled   = false
         @assets.compiled = false
 
         SW.start 'compiler.ts'
+        SW.start 'compiler.coffee'
         SW.start 'compiler.sass'
         SW.start 'compiler.assets'
         SW.start 'compiler.all'
@@ -57,11 +65,15 @@ class Compiler
                     ts.push f
                     used = true
                 # ignore removed files
+                else if PH.testCoffee(path) and not removed and path.indexOf(coffeeRoot) == 0
+                    coffee.push f
+                    used = true
+                # ignore removed files
                 else if PH.testSass(path) and not removed and path.indexOf(sassRoot) == 0
                     sass.push f
                     used = true
                 # ignore removed files in this else -> all remoed will be added separate
-                else if path.indexOf(assetRoot) == 0 and not removed
+                else if path.indexOf(assetsRoot) == 0 and not removed
                     assets.push f
                     used = true
 
@@ -87,6 +99,11 @@ class Compiler
             @ts.ipc.send 'compile', ts
         else
             @ts.compiled = true
+
+        if coffee.length
+            @coffee.ipc.send 'compile', coffee
+        else
+            @coffee.compiled = true
 
         l = @files.length
         if l
@@ -119,7 +136,7 @@ class Compiler
         else
             console.log "#{comp} compiled in #{t}ms without errors".green
 
-        if @ts.compiled and @sass.compiled and @assets.compiled
+        if @ts.compiled and @coffee.compiled and @sass.compiled and @assets.compiled
             t = SW.stop 'compiler.all'
             l = @errors.length
             if @errors.length > 0

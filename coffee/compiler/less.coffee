@@ -1,7 +1,5 @@
-FS    = require 'fs'
 Path  = require 'path'
 _     = require '../utils/pimped-lodash'
-FSU   = require '../utils/fsu'
 IPC   = require '../utils/ipc'
 
 

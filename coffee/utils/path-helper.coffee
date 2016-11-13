@@ -9,6 +9,9 @@ TYPES =
     ts:     'ts'
     coffee: 'coffee'
 
+    
+#TODO: generalize types together with compilers
+
 
 class PathHelper
 

@@ -1,4 +1,4 @@
-FS     = require 'fs-extra'
+FS     = require 'fs'
 Path   = require 'path'
 ts     = require 'typescript'
 Linter = require 'tslint'
