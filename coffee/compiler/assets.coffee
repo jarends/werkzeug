@@ -24,19 +24,18 @@ class AssetCompiler
         for file in files
             ++@openFiles
             path = file.path
-            out  = PH.outFromIn @cfg, 'assets', path
             if not file.removed
-                @copy path, out
+                @copy path
             else
-                @remove path, out
+                @remove path
 
         if not @openFiles
             @compiled()
         null
 
 
-    copy: (path, out) ->
-        console.log 'copy asset: ', path, out
+    copy: (path) ->
+        out = PH.outFromIn @cfg, 'assets', path
         FS.copy path, out, (error) =>
             --@openFiles
             @errors.push {path:path, error:error} if error
@@ -46,8 +45,7 @@ class AssetCompiler
 
 
     remove: (path, out) ->
-        console.log 'remove asset: ', path, out
-        out = PH.correctOut out
+        out = PH.outFromIn @cfg, null, path, true
         map = out + '.map'
 
         FS.remove out, (error) =>

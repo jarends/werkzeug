@@ -1,6 +1,15 @@
 Path = require 'path'
 
 
+TYPES =
+    scss:   'sass'
+    sass:   'sass'
+    less:   'less'
+    stylus: 'stylus'
+    ts:     'ts'
+    coffee: 'coffee'
+
+
 class PathHelper
 
     @sass   : /\.sass$|\.scss$/
@@ -46,7 +55,14 @@ class PathHelper
         Path.join cfg.base, p
 
 
+    @getType: (path) ->
+        ext = /\.(\w*)$/.exec(path)[1]
+        console.log 'get type: ', ext
+        TYPES[ext] or 'assets'
+
+
     @outFromIn: (cfg, type, path, correct) ->
+        type    = @getType(path) if not type
         inPath  = @getIn  cfg, type
         outPath = @getOut cfg, type
         rel     = path.replace inPath, outPath

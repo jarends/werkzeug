@@ -11,6 +11,9 @@ SW     = require '../utils/stopwatch'
 PH     = require '../utils/path-helper'
 
 
+#TODO: load project specific tsconfig and put options in .default.tsconfig
+
+
 options =
     declaration: false
     target:                         ts.ScriptTarget.ES5

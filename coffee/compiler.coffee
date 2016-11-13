@@ -23,10 +23,13 @@ class Compiler
 
 
     compile: () ->
-        ts      = []
-        sass    = []
-        assets  = []
-        root    = Path.join @cfg.base, @cfg.root
+        ts        = []
+        sass      = []
+        assets    = []
+
+        tsRoot    = PH.getIn @cfg, 'ts'
+        sassRoot  = PH.getIn @cfg, 'sass'
+        assetRoot = PH.getIn @cfg, 'assets'
 
         @ts.compiled     = false
         @sass.compiled   = false
@@ -50,15 +53,15 @@ class Compiler
                 f = path:path, removed:removed, error:false
 
                 # add removed files also to update ts file map
-                if PH.testTS(path)
+                if PH.testTS(path) and path.indexOf(tsRoot) == 0
                     ts.push f
                     used = true
                 # ignore removed files
-                else if PH.testSass(path) and not removed
+                else if PH.testSass(path) and not removed and path.indexOf(sassRoot) == 0
                     sass.push f
                     used = true
                 # ignore removed files in this else -> all remoed will be added separate
-                else if path.indexOf(root) == 0 and not removed
+                else if path.indexOf(assetRoot) == 0 and not removed
                     assets.push f
                     used = true
 
