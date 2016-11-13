@@ -1,48 +1,49 @@
 {
-  "name": "werkzeug",
-  "version": "0.0.1",
-  "description": "web tech dev helper",
-  "main": "./js/werkzeug.js",
-  "bin": {
-    "wz": "./bin/werkzeug"
-  },
-  "scripts": {
-    "start": "coffee -c -w -o ./js ./coffee"
-  },
-  "keywords": [
-    "dev tool",
-    "web project"
-  ],
-  "author": "jarends",
-  "homepage": "https://github.com/jarends/werkzeug#readme",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/jarends/werkzeug.git"
-  },
-  "bugs": {
-    "url": "https://github.com/jarends/werkzeug/issues"
-  },
-  "license": "Unlicense",
-  "devDependencies": {},
-  "dependencies": {
-    "babel-core": "^6.18.2",
-    "babel-preset-es2015": "^6.18.0",
-    "body-parser": "^1.15.2",
-    "chokidar": "^1.6.0",
-    "colors": "^1.1.2",
-    "cross-spawn": "^4.0.0",
-    "emap": "0.0.5",
-    "express": "^4.14.0",
-    "fs-extra": "^0.30.0",
-    "homedir": "^0.6.0",
-    "jsdictionary": "0.0.2",
-    "karg": "^1.0.9",
-    "lodash": "^4.13.1",
-    "ng-annotate": "^1.2.1",
-    "node-sass": "^3.11.2",
-    "portfinder": "^1.0.9",
-    "tslint": "^3.15.1",
-    "typescript": "^2.1.1",
-    "walkdir": "0.0.11"
-  }
+    "name": "werkzeug",
+    "version": "0.0.1",
+    "description": "web tech dev helper",
+    "main": "./js/werkzeug.js",
+    "bin": {
+        "wz": "./bin/werkzeug"
+    },
+    "scripts": {
+        "postinstall": "coffee -c -o ./js ./coffee",
+        "start": "coffee -c -w -o ./js ./coffee"
+    },
+    "keywords": [
+        "dev tool",
+        "web project"
+    ],
+    "author": "jarends",
+    "homepage": "https://github.com/jarends/werkzeug#readme",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jarends/werkzeug.git"
+    },
+    "bugs": {
+        "url": "https://github.com/jarends/werkzeug/issues"
+    },
+    "license": "Unlicense",
+    "devDependencies": {},
+    "dependencies": {
+        "babel-core": "^6.18.2",
+        "babel-preset-es2015": "^6.18.0",
+        "body-parser": "^1.15.2",
+        "chokidar": "^1.6.0",
+        "colors": "^1.1.2",
+        "cross-spawn": "^4.0.0",
+        "emap": "0.0.5",
+        "express": "^4.14.0",
+        "fs-extra": "^0.30.0",
+        "homedir": "^0.6.0",
+        "jsdictionary": "0.0.2",
+        "karg": "^1.0.9",
+        "lodash": "^4.13.1",
+        "ng-annotate": "^1.2.1",
+        "node-sass": "^3.11.2",
+        "portfinder": "^1.0.9",
+        "tslint": "^3.15.1",
+        "typescript": "^2.1.1",
+        "walkdir": "0.0.11"
+    }
 }
