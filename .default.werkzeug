@@ -9,6 +9,8 @@
         "sourceMaps": true
     },
     "coffee": {
+        "in":  "./src",
+        "out": "./.wz.tmp"
     },
     "ts": {
         "in":  "./src",
@@ -19,8 +21,12 @@
         "out": "./.wz.tmp"
     },
     "less": {
+        "in":  "./src",
+        "out": "./.wz.tmp"
     },
     "stylus": {
+        "in":  "./src",
+        "out": "./.wz.tmp"
     },
     "assets": {
         "in":  "./src",

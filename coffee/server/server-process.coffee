@@ -3,6 +3,7 @@ Express    = require 'express'
 BodyParser = require 'body-parser'
 Portfinder = require 'portfinder'
 IPC        = require '../utils/ipc'
+PH         = require '../utils/path-helper'
 
 
 class Server
@@ -16,12 +17,13 @@ class Server
 
 
     init: (@cfg) ->
-
-        @root    = Path.join @cfg.base, @cfg.tmp, @cfg.root
-        @express = Express()
+        @root       = PH.getOut @cfg, 'server'
+        @express    = Express()
         @express.use BodyParser.json()
         @express.use BodyParser.urlencoded extended:true
         @express.use '/', Express.static @root
+
+        console.log 'server serving from: ', @root
 
         # mod rewrite fake
         @express.get '*', (request, response, next) =>

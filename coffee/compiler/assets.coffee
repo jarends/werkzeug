@@ -1,8 +1,7 @@
-FS    = require 'fs-extra'
-Path  = require 'path'
-Reg   = require '../utils/regex'
-FSU   = require '../utils/fsu'
-IPC   = require '../utils/ipc'
+FS  = require 'fs-extra'
+FSU = require '../utils/fsu'
+IPC = require '../utils/ipc'
+PH  = require '../utils/path-helper'
 
 
 class AssetCompiler
@@ -22,12 +21,10 @@ class AssetCompiler
     compile: (files) ->
         @errors    = []
         @openFiles = 0
-        base       = @cfg.base
-        tmp        = Path.join base, @cfg.tmp
         for file in files
             ++@openFiles
             path = file.path
-            out  = Path.join tmp, Path.relative(base, path)
+            out  = PH.outFromIn @cfg, 'assets', path
             if not file.removed
                 @copy path, out
             else
@@ -39,7 +36,7 @@ class AssetCompiler
 
 
     copy: (path, out) ->
-        #console.log 'copy asset: ', path
+        console.log 'copy asset: ', path, out
         FS.copy path, out, (error) =>
             --@openFiles
             @errors.push {path:path, error:error} if error
@@ -49,14 +46,21 @@ class AssetCompiler
 
 
     remove: (path, out) ->
-        #console.log 'remove asset: ', path
-        out = Reg.correctOut out
+        console.log 'remove asset: ', path, out
+        out = PH.correctOut out
         map = out + '.map'
 
         FS.remove out, (error) =>
             --@openFiles
-            FS.removeSync(map) if FSU.isFile map
-            @errors.push {path:path, error:error} if error
+            if FSU.isFile map
+                ++@openFiles
+                FS.remove map, (error) =>
+                    --@openFiles
+                    @errors.push {path:map, error:error} if error
+                    @compiled() if @openFiles == 0
+                    null
+
+            @errors.push {path:out, error:error} if error
             @compiled() if @openFiles == 0
             null
         null

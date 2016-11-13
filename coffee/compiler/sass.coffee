@@ -1,19 +1,8 @@
 Path  = require 'path'
 FS    = require 'fs-extra'
 Sass  = require 'node-sass'
-Reg   = require '../utils/regex'
 IPC   = require '../utils/ipc'
-
-
-options =
-    'style':            'nested'
-    'stop-on-error':    false
-    'sourcemap':        'auto'
-    'default-encoding': 'utf-8'
-    'check':            true
-    'precision':        5
-    'cache-location':   ''
-    'quiet':            false
+PH    = require '../utils/path-helper'
 
 
 class SassCompiler
@@ -28,26 +17,21 @@ class SassCompiler
 
 
     init: (@cfg) ->
-        options['cache-location'] = Path.join @cfg.base, @cfg.tmp, '.sass-cache'
         null
 
 
     compile: (files) ->
-
         @errors = []
         options =
             outputStyle: 'compressed'
             sourceMap:   true
 
-        base = @cfg.base
-        tmp  = @cfg.tmp
         for file in files
             path = file.path
             if not /^_/.test Path.basename(path)
                 ++@openFiles
-                out             = Reg.correctTmp path, base, tmp
                 options.file    = path
-                options.outFile = Reg.correctOut out
+                options.outFile = PH.outFromIn @cfg, 'sass', path, true
                 Sass.render options, @onResult
 
         null
@@ -59,20 +43,17 @@ class SassCompiler
 
         if error
             #console.log 'sass.onError: ', error
-
             @errors.push
                 path: error.file
                 line: error.line
                 col:  error.column
                 text: error.message
         else
-            #console.log 'sass.onResult: ', @openFiles, result
-
-            base = @cfg.base
-            tmp  = @cfg.tmp
             path = result.stats.entry
-            out  = Reg.correctTmp Reg.correctOut(path), base, tmp
+            out  = PH.outFromIn @cfg, 'sass', path, true
             map  = out + '.map'
+
+            #console.log 'sass write css: ', out
 
             FS.ensureFileSync out
             FS.ensureFileSync map

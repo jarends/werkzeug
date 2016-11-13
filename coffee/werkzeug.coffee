@@ -3,7 +3,6 @@ FS       = require 'fs'
 Path     = require 'path'
 Colors   = require 'colors'
 Config   = require './config'
-Paths    = require './utils/paths'
 Server   = require './server'
 Walker   = require './walker'
 Watcher  = require './watcher'
@@ -12,6 +11,7 @@ Packer   = require './packer'
 Builder  = require './builder'
 FSU      = require './utils/fsu'
 SW       = require './utils/stopwatch'
+PH       = require './utils/path-helper'
 
 
 ###
@@ -36,6 +36,8 @@ Colors.setTheme
 # .wz.prod -> wz prod
 # .wz.dev  -> wz dev
 
+#TODO: watch current wz config and restart app on change
+
 
 class Werkzeug extends Emitter
 
@@ -53,7 +55,6 @@ class Werkzeug extends Emitter
         SW.start 'wz.startup'
 
         @cfg         = new Config(base)
-        @paths       = new Paths (@cfg)
         @server      = new Server  (@)
         @walker      = new Walker  (@)
         @watcher     = new Watcher (@)
@@ -71,9 +72,12 @@ class Werkzeug extends Emitter
 
         # TODO: append @cfg paths to ignores (dest, tmp, ...)
 
-        tmp = Path.join @cfg.base, @cfg.tmp
-        FSU.rmDir tmp if FSU.isDir tmp
-        FS.mkdirSync tmp
+        paths = PH.getPaths(@cfg)
+        console.log 'clear out paths: ', paths
+        for path in paths
+            FSU.rmDir path if FSU.isDir path
+            FS.mkdirSync path
+
         process.on 'exit',    @terminate
         process.on 'SIGINT',  @terminate
         process.on 'SIGTERM', @terminate
@@ -216,14 +220,6 @@ class Werkzeug extends Emitter
         file.dirty   = true
         @update()
         null
-
-
-    getIn: (type, path) ->
-        @paths.getIn type, path
-
-
-    getOut: (type, path) ->
-        @paths.getOut type, path
 
 
     ignore: (path) ->

@@ -4,9 +4,8 @@ nga          = require 'ng-annotate/ng-annotate-main'
 Dict         = require 'jsdictionary'
 Babel        = require 'babel-core'
 Babel_es2015 = require 'babel-preset-es2015'
-Paths        = require '../utils/paths'
-Reg          = require '../utils/regex'
 IPC          = require '../utils/ipc'
+PH           = require '../utils/path-helper'
 
 
 PACK_CODE   = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
@@ -97,33 +96,30 @@ class Packer
     init: (@cfg) ->
         @id  = Math.random() + '_' + Date.now()
         @nga = @cfg.packer.nga or false
-        @paths = new Paths(@cfg)
         null
 
 
     readPackages: () ->
         @errors  = []
         packages = @cfg.packer?.packages or []
-        root     = Path.join @cfg.base, @cfg.tmp, @cfg.root
+        out      = PH.getOut @cfg, 'packer'
         for cfg in packages
-            path = Path.join root, cfg.in
-            @readFile Reg.correctOut(path)
+            path = Path.join out, cfg.in
+            @readFile path
         null
 
 
     update: (files) ->
         errors   = @errors or []
         @errors  = []
-        base = @cfg.base
-        tmp  = Path.join base, @cfg.tmp
         for f in files
-            path = Reg.correctTmp Reg.correctOut(f.path), base, tmp
+            path = PH.outFromIn @cfg, 'packer', f.path, true
             file = @fileMap[path]
             if file
                 if file.removed
                     @remove file
                 else
-                    # indexers unshift/shift keeps parent linking correct
+                    # indexers unshift/shift behaviour keeps parent linking correct
                     @clear file
                     @readFile path
 
@@ -131,6 +127,7 @@ class Packer
             path = error.path
             file = @fileMap[path]
             if file
+                # indexers unshift/shift behaviour keeps parent linking correct
                 @clear file
                 @readFile path
 
@@ -195,7 +192,7 @@ class Packer
         @packs        = []
         @chunks       = []
         packages      = @cfg.packer.packages or []
-        dest          = Path.join @cfg.base, @cfg.tmp, @cfg.root
+        dest          = PH.getOut @cfg, 'packer'
 
         #TODO: delete existing pack and chunk files
 
@@ -428,7 +425,7 @@ class Packer
 
         #while result = regex.exec file.source
         file.source = file.source.replace(regex, (args...) =>
-            name     = Reg.correctOut(args[regPos])
+            name     = PH.correctOut args[regPos]
             isLoader = loaderRegex.test name
             name     = name.replace /^es6-promise\!/, '' if isLoader
             isRel    = /\.|\//.test(name[0])

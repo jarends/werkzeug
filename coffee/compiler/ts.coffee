@@ -8,6 +8,7 @@ _      = require '../utils/pimped-lodash'
 FSU    = require '../utils/fsu'
 IPC    = require '../utils/ipc'
 SW     = require '../utils/stopwatch'
+PH     = require '../utils/path-helper'
 
 
 options =
@@ -38,6 +39,7 @@ linterOptions =
 
 class TSCompiler
 
+
     constructor: () ->
         @initialized   = false
         @cfg           = null
@@ -52,9 +54,9 @@ class TSCompiler
 
 
     init: (@cfg) ->
-        options.outDir  = Path.join @cfg.base, @cfg.tmp
-        options.rootDir = @cfg.base
         @tslintCfg      = {}
+        options.rootDir = PH.getIn  @cfg, 'ts'
+        options.outDir  = PH.getOut @cfg, 'ts'
         @addTypings()
         @loadTSLintConfig()
         null

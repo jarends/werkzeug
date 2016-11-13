@@ -1,12 +1,11 @@
 Path   = require 'path'
 CP     = require 'child_process'
 IPC    = require './utils/ipc'
-Reg    = require './utils/regex'
 SW     = require './utils/stopwatch'
+PH     = require './utils/path-helper'
 TS     = Path.join __dirname, 'compiler', 'ts'
 ASSET  = Path.join __dirname, 'compiler', 'assets'
 SASS   = Path.join __dirname, 'compiler', 'sass'
-
 #TODO: use a generalized compiler contruct
 
 class Compiler
@@ -51,11 +50,11 @@ class Compiler
                 f = path:path, removed:removed, error:false
 
                 # add removed files also to update ts file map
-                if Reg.testTS(path)
+                if PH.testTS(path)
                     ts.push f
                     used = true
                 # ignore removed files
-                else if Reg.testSass(path) and not removed
+                else if PH.testSass(path) and not removed
                     sass.push f
                     used = true
                 # ignore removed files in this else -> all remoed will be added separate
