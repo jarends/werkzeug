@@ -1,5 +1,6 @@
 Emitter  = require 'events'
 FS       = require 'fs'
+Path     = require 'path'
 Colors   = require 'colors'
 Config   = require './config'
 Server   = require './server'
@@ -13,7 +14,28 @@ SW       = require './utils/stopwatch'
 PH       = require './utils/path-helper'
 
 
+
+
+#TODO: make sourcemaps optional
+
+#TODO: implement salter!!!
+
+#TODO: enable cli flag for different configs, maybe run configs concurrently
+# .wz.prod -> wz prod
+# .wz.dev  -> wz dev
+
+#TODO: watch current wz config and restart app on change
+
+#TODO: implement reasonable config params
+
+#TODO: maybe implement globs for config paths
+
+
+
+
 ###
+    colors:
+
     black
     red
     green
@@ -26,29 +48,18 @@ PH       = require './utils/path-helper'
     grey
 ###
 
-
+#TODO: implement theme???
 Colors.setTheme
     error: 'red'
 
 
-#TODO: implement sourcemaps!!!
-
-#TODO: enable cli flag for different configs
-# .wz.prod -> wz prod
-# .wz.dev  -> wz dev
-
-#TODO: watch current wz config and restart app on change
-
-#TODO: make sourcemaps optional
-
-#TODO: implement reasonable config params
 
 
 class Werkzeug extends Emitter
 
-    # TODO: add config paths dynamically to ignores
-    @ignores     = 'node_modules$|\\.DS_Store$|dist$|\\.idea$|\\.git$|gulpfile\\.coffee$|Gruntfile\\.coffee$|\\.wz\\.tmp$'
-    @interests   = '\\.coffee$|\\.ts$|\\.sass$|\\.scss$|\\.less$'
+
+    @ignores     = 'node_modules$|\\.DS_Store$|dist$|\\.idea$|\\.git$|gulpfile\\.coffee$|Gruntfile\\.coffee$'
+    @interests   = '\\.coffee$|\\.ts$|\\.sass$|\\.scss$|\\.less$|\\.stylus$'
     @updateDelay = 500
 
 
@@ -66,8 +77,6 @@ class Werkzeug extends Emitter
         @compiler    = new Compiler(@)
         @packer      = new Packer  (@)
         @builder     = new Builder (@)
-        @ignores     = new RegExp("(#{WZ.ignores})")
-        @interests   = new RegExp("(#{WZ.interests})")
         @errors      = []
         @files       = []
         @fileMap     = {}
@@ -75,12 +84,18 @@ class Werkzeug extends Emitter
         @initialized = false
         @dirty       = false
 
-        # TODO: append @cfg paths to ignores (dest, tmp, ...)
-
+        # clear all output paths and add them to ignores
         paths = PH.getPaths(@cfg)
         for path in paths
             FSU.rmDir path if FSU.isDir path
             FS.mkdirSync path
+
+            ignore = Path.relative @cfg.base, path
+            ignore = ignore.replace(/\\/g, '\\\\').replace(/\//g, '\\/').replace(/\./g, '\\.') + '$'
+            WZ.ignores += '|' + ignore
+
+        @ignores   = new RegExp("(#{WZ.ignores})")
+        @interests = new RegExp("(#{WZ.interests})")
 
         process.on 'exit',    @terminate
         process.on 'SIGINT',  @terminate
@@ -190,8 +205,6 @@ class Werkzeug extends Emitter
         else
             @files.push(file = @fileMap[path] = {})
 
-        #console.log 'fileAdded: ', path
-
         file.path   = path
         file.added  = Date.now()
         file.dirty  = true
@@ -205,8 +218,6 @@ class Werkzeug extends Emitter
         file = @fileMap[path]
         return if not file
 
-        #console.log 'fileChanged: ', path
-
         file.changed = Date.now()
         file.dirty   = true
         file.errors  = null
@@ -217,8 +228,6 @@ class Werkzeug extends Emitter
     fileRemoved: (path) ->
         file = @fileMap[path]
         return if not file
-
-        #console.log 'fileRemoved: ', path
 
         file.removed = Date.now()
         file.dirty   = true

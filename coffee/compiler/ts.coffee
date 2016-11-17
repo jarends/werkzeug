@@ -13,26 +13,27 @@ PH     = require '../utils/path-helper'
 
 #TODO: load project specific tsconfig and put options in .default.tsconfig
 
+node_modules = Path.join __dirname, '..', '..', 'node_modules'
 
 options =
-    declaration: false
     target:                         ts.ScriptTarget.ES5
     module:                         ts.ModuleKind.CommonJS
     moduleResolution:               ts.ModuleResolutionKind.NodeJs
     rootDir:                        ''
     outDir:                         ''
+    baseUrl:                        node_modules
     sourceMap:                      true
-    emitBOM:                        false
     experimentalDecorators:         true
     emitDecoratorMetadata:          true
-    allowSyntheticDefaultImports:   true
     removeComments:                 false
     noImplicitAny:                  false
     noEmit:                         false
     noEmitHelpers:                  true
+    importHelpers:                  true
     noEmitOnError:                  false
     preserveConstEnums:             true
     suppressImplicitAnyIndexErrors: true
+    allowSyntheticDefaultImports:   true
 
 
 linterOptions =
@@ -46,6 +47,7 @@ class TSCompiler
     constructor: () ->
         @initialized   = false
         @cfg           = null
+        @tscfg         = null
         @errors        = null
         @linterErrors  = []
         @linterMap     = {}
@@ -58,10 +60,24 @@ class TSCompiler
 
     init: (@cfg) ->
         @tslintCfg      = {}
-        options.rootDir = PH.getIn  @cfg, 'ts'
-        options.outDir  = PH.getOut @cfg, 'ts'
+        @inBase         = PH.getIn  @cfg, 'ts'
+        @outBase        = PH.getOut @cfg, 'ts'
+        options.rootDir = @inBase
+        options.outDir  = @outBase
+        options.sourceRoot = ''
+        @parseTSConfig()
         @addTypings()
         @loadTSLintConfig()
+        null
+
+
+    parseTSConfig: () ->
+        @tscfg = FSU.require @cfg.base, 'tsconfig.json'
+
+        if @tscfg
+            parsed = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
+            console.log 'parsed config: ', parsed
+
         null
 
 

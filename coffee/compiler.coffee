@@ -42,11 +42,11 @@ class Compiler
         @sass.compiled   = false
         @assets.compiled = false
 
+        SW.start 'compiler.all'
         SW.start 'compiler.ts'
         SW.start 'compiler.coffee'
         SW.start 'compiler.sass'
         SW.start 'compiler.assets'
-        SW.start 'compiler.all'
 
         @errors = []
         @files  = []
@@ -61,7 +61,8 @@ class Compiler
                 f = path:path, removed:removed, error:false
 
                 # add removed files also to update ts file map
-                if PH.testTS(path) and path.indexOf(tsRoot) == 0
+                # allow d.ts files from everywhere
+                if PH.testTS(path) and (path.indexOf(tsRoot) == 0 or /\.d\.ts/.test path)
                     ts.push f
                     used = true
                 # ignore removed files
@@ -72,7 +73,7 @@ class Compiler
                 else if PH.testSass(path) and not removed and path.indexOf(sassRoot) == 0
                     sass.push f
                     used = true
-                # ignore removed files in this else -> all remoed will be added separate
+                # ignore removed files in this else -> all removed files will be added separate
                 else if path.indexOf(assetsRoot) == 0 and not removed
                     assets.push f
                     used = true
@@ -88,7 +89,7 @@ class Compiler
         if assets.length
             @assets.ipc.send 'compile', assets
         else
-            @assets.compiled = true;
+            @assets.compiled = true
 
         if sass.length
             @sass.ipc.send 'compile', sass

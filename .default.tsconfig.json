@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "removeComments": false,
+        "noImplicitAny": false,
+        "noEmit": false,
+        "noEmitHelpers": true,
+        "importHelpers": true,
+        "noEmitOnError": false,
+        "preserveConstEnums": true,
+        "suppressImplicitAnyIndexErrors": true,
+        "allowSyntheticDefaultImports": true,
+        "lib": [],
+        "types": []
+    },
+    "compileOnSave": false,
+    "buildOnSave": false,
+    "atom": {
+        "rewriteTsconfig": false,
+        "formatOnSave": false
+    }
+}

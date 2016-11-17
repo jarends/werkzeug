@@ -29,6 +29,10 @@ class Packer
         null
 
 
+    packFiles: () ->
+        null
+
+
     packed: (errors) ->
         t = SW.stop 'packer'
         l = errors.length

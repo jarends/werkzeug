@@ -1,20 +1,24 @@
-FS           = require 'fs'
-Path         = require 'path'
-nga          = require 'ng-annotate/ng-annotate-main'
-Dict         = require 'jsdictionary'
-Babel        = require 'babel-core'
-Babel_es2015 = require 'babel-preset-es2015'
-IPC          = require '../utils/ipc'
-PH           = require '../utils/path-helper'
+FS                 = require 'fs'
+Path               = require 'path'
+nga                = require 'ng-annotate/ng-annotate-main'
+Dict               = require 'jsdictionary'
+Babel              = require 'babel-core'
+Babel_es2015       = require 'babel-preset-es2015'
+IPC                = require '../utils/ipc'
+FSU                = require '../utils/fsu'
+PH                 = require '../utils/path-helper'
+SW                 = require '../utils/stopwatch'
+PROCESS_BASE       = Path.join __dirname, '..', '..'
+PACK_CODE          = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
+CHUNK_CODE         = FS.readFileSync Path.join(__dirname, 'chunk.js'), 'utf8'
+MULTI_COMMENT_MAP  = /\/\*\s*[@#]\s*sourceMappingURL\s*=\s*([^\s]*)\s*\*\//g
+SINGLE_COMMENT_MAP = /\/\/\s*[@#]\s*sourceMappingURL\s*=\s*([^\s]*)($|\n|\r\n?)/g
 
 
-PACK_CODE   = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
-CHUNK_CODE  = FS.readFileSync Path.join(__dirname, 'chunk.js'), 'utf8'
+#TODO: make chunk loader mechanism more dynamic (currently only Promis variant available)
 
 
 getPackCode = (p) -> """
-var ENV = '';
-var HMR = false;
 (function(pack)
 {
     var cfg = {
@@ -27,7 +31,6 @@ var HMR = false;
     };
     var packer = #{if p.index == 0 then PACK_CODE else CHUNK_CODE}
     packer.init(cfg);
-
 })({
 #{p.code}
 });"""
@@ -44,7 +47,6 @@ getChunkCode = (p) -> """
     };
     var chunk = #{CHUNK_CODE}
     chunk.init(cfg);
-
 })({
 #{p.code}
 });"""
@@ -96,15 +98,15 @@ class Packer
     init: (@cfg) ->
         @id  = Math.random() + '_' + Date.now()
         @nga = @cfg.packer.nga or false
+        @out = PH.getOut @cfg, 'packer'
         null
 
 
     readPackages: () ->
         @errors  = []
         packages = @cfg.packer?.packages or []
-        out      = PH.getOut @cfg, 'packer'
         for cfg in packages
-            path = Path.join out, cfg.in
+            path = Path.join @out, cfg.in
             @readFile path
         null
 
@@ -192,24 +194,25 @@ class Packer
         @packs        = []
         @chunks       = []
         packages      = @cfg.packer.packages or []
-        dest          = PH.getOut @cfg, 'packer'
 
-        #TODO: delete existing pack and chunk files
+        #TODO: delete existing chunk files!!!
 
+        # clear loader data
         for path of @fileMap
             file = @fileMap[path]
             file.loaders = {}
             file.parts   = {}
 
+        # create packs and gather all requireds
         for pack, i in packages by -1
-            path = Path.join dest, pack.in
+            path = Path.join @out, pack.in
             file = @fileMap[path]
             p =
                 file:       file
                 index:      i
                 total:      packages.length
                 id:         @id
-                out:        Path.join dest, pack.out
+                out:        Path.join @out, pack.out
                 req:        {}
                 loaders:    {}
                 code:       ''
@@ -218,10 +221,12 @@ class Packer
             @packs.push p
             @gatherReq p, file
 
+        # gather all modules for each loader
         for path of @loaders
             loader = @fileMap[path]
             @gatherChunks loader, loader
 
+        # cleanup modules required by each loader
         for path of @loaded
             @cleanupChunks @fileMap[path]
 
@@ -235,7 +240,7 @@ class Packer
                 file:       loader
                 index:      loader.index
                 id:         @id
-                out:        Path.join dest, chunk
+                out:        Path.join @out, chunk
                 chunk:      chunk
                 code:       ''
                 numModules: 0
@@ -303,14 +308,62 @@ class Packer
         for path of file.loaders
             ++count
             return null if count > 1
-        return @fileMap[path]
+        @fileMap[path]
+
+
+
+
+    initSourceMapping: (pack, type) ->
+        if type == 'pack'
+            if pack.index == 0
+                @lineOffset = 194
+            else
+                @lineOffset = 50
+        else
+            @lineOffset = 48
+
+        origin     = Path.relative @out, pack.out
+        @sourceMap =
+            version : 3
+            file:     origin
+            sourceRoot: ''
+            sources: [
+                origin
+            ]
+            sections: []
+        null
+
+
+    addSourceMap: (pack, file, singleLine) ->
+        @lineOffset += if singleLine then 2 else 3
+
+        map = file.sourceMap
+        if map
+            @sourceMap.sections.push
+                offset:
+                    line:   @lineOffset
+                    column: 0
+                map: map
+
+        @lineOffset += 1 + (if singleLine then 1 else file.numLines)
+        null
+
+
+    writeSourceMap: (pack) ->
+        mapOut = pack.out + '.map'
+        FS.writeFileSync mapOut, JSON.stringify(@sourceMap), 'utf8'
+        pack.code += "\r\n//# sourceMappingURL=#{Path.relative @out, pack.out}.map"
+
+
 
 
     writePack: (p) ->
+        @initSourceMapping(p, 'pack')
         @addPackSrc p, @fileMap[path] for path of p.req
         p.code = p.code.slice 0, -3
-        p.code = getPackCode(p)
+        p.code = getPackCode p
         ++@openPacks
+        @writeSourceMap p
 
         #TODO: handle write errors
         FS.writeFile p.out, p.code, 'utf8', (error) =>
@@ -324,10 +377,12 @@ class Packer
 
 
     writeChunk: (p) ->
+        @initSourceMapping(p, 'chunk')
         @addPackSrc p, @fileMap[path] for path of p.file.parts
         p.code = p.code.slice 0, -3
-        p.code = getChunkCode(p)
+        p.code = getChunkCode p
         ++@openPacks
+        @writeSourceMap p
 
         #TODO: handle write errors
         FS.writeFile p.out, p.code, 'utf8', (error) =>
@@ -343,24 +398,23 @@ class Packer
     addPackSrc: (p, file) ->
         ++@totalModules
         ++p.numModules
-        source = file.source
-        source = nga(source, add:true).src if @nga
+        source   = file.source
+        source   = nga(source, add:true).src if @nga
+        moduleId = Path.relative @out, file.path
 
         code = "// #{file.path}\r\n#{file.index}: "
         if /.js$/.test file.path
-            code += "function(module, exports, require) {\r\n#{source}\r\n},\r\n"
+            code += "function(module, exports, require) {\r\nmodule.id = '#{moduleId}';\r\n#{source}\r\n},\r\n"
+            @addSourceMap p, file, false
         else
             str = source.replace(/'/g, '\\\'').replace(/\r\n|\n/g, '\\n')
             if /.html$/.test file.path
                 str = str.replace /\${\s*(require\s*\(\s*\d*?\s*\))\s*}/g, '\' + $1 + \''
             code += "function(module, exports, require) {\r\nmodule.exports = '#{str}';\r\n},\r\n"
+            @addSourceMap p, file, true
 
         p.code += code
         null
-
-
-
-
 
 
 
@@ -374,13 +428,15 @@ class Packer
             return file
 
         file = @fileMap[path] =
-            index:   @indexer.get()
-            path:    path
-            source:  ''
-            ref:     {}
-            req:     {}
-            reqAsL:  {}
-            error:   false
+            index:     @indexer.get()
+            path:      path
+            source:    ''
+            sourceMap: ''
+            numLines:  0
+            ref:       {}
+            req:       {}
+            reqAsL:    {}
+            error:     false
 
         if parent
             parent.req[path]      = true
@@ -398,14 +454,52 @@ class Packer
                     col:  0
                     text: 'file read error'
             else
+                #TODO: babel should be a compiler
                 #TODO: think about a better detection
                 # use babel if file is in node-modules and isn't an umd module and has an import statement
                 if /node_modules/.test(path) and not /\.umd\./.test(path) and /import /g.test(source)
                     result      = Babel.transform source, babelOptions
                     console.log 'babel transformed: ' + path
-                    file.source = result.code
-                else
-                    file.source = source
+                    source = result.code
+
+                # handle source map
+                if PH.testJS(path)
+
+                    moduleId   = Path.relative @out, path
+                    mapPath    = path + '.map'
+                    source     = source.replace SINGLE_COMMENT_MAP, ''
+                    source     = source.replace MULTI_COMMENT_MAP,  ''
+                    numLines   = (source or '').split(/\r\n|\n/).length
+                    fixFF      = @cfg.options.fffMaps
+                    includeExt = @cfg.options.includeExternalMaps
+
+                    if FSU.isFile(mapPath) and (PH.isOutChild(@cfg, 'packer', path) or includeExt)
+                        map            = JSON.parse FS.readFileSync(mapPath, 'utf8')
+                        map.file       = Path.basename path
+                        file.sourceMap = map
+                        mapDir         = Path.dirname mapPath
+
+                        # only touch sourcesContent to fix firefox sourcemap bug
+                        if fixFF
+                            map.sourcesContent = map.sourcesContent or []
+
+                        # correct paths to original sources
+                        # and include sources, if firefox fixing is enabled
+                        for sourcePath, i in map.sources
+                            absSourcePath = Path.join mapDir, map.sourceRoot, sourcePath
+                            if fixFF and not map.sourcesContent[i]
+                                # add all original sources to the map to fix firefox sourcemap bug
+                                if FSU.isFile(absSourcePath)
+                                    map.sourcesContent.push FS.readFileSync(absSourcePath, 'utf8')
+                                else
+                                    map.sourcesContent.push ''
+                            map.sources[i] = Path.relative @out, absSourcePath
+
+                        map.sourceRoot = ''
+
+                file.moduleId = moduleId
+                file.source   = source
+                file.numLines = numLines
                 @parseFile file
 
             @writePackages() if --@openFiles == 0
@@ -424,7 +518,7 @@ class Packer
         loaderRegex = new RegExp(@cfg.packer.loaderPrefix)
 
         #while result = regex.exec file.source
-        file.source = file.source.replace(regex, (args...) =>
+        file.source = file.source.replace regex, (args...) =>
             name     = PH.correctOut args[regPos]
             isLoader = loaderRegex.test name
             name     = name.replace /^es6-promise\!/, '' if isLoader
@@ -460,7 +554,7 @@ class Packer
                     col:  0
                     text: 'packer.parseFile: module "' + name + '" not found'
 
-            args[0])
+            args[0]
         null
 
 
@@ -475,13 +569,13 @@ class Packer
 
 
     getNodeModulePath: (base, moduleName) ->
-        nodePath   = Path.join base, '/node_modules'
+        nodePath   = Path.join base, 'node_modules'
         modulePath = Path.join nodePath, moduleName
 
         if @isDir nodePath
             ext = @getExt moduleName, '.js'
             return {path:file} if @isFile file = modulePath + ext                           # .js
-            if @isFile file = Path.join modulePath, '/package.json'                         # package.json
+            if @isFile file = Path.join modulePath, 'package.json'                          # package.json
                 try
                     json = require file
                     main = json?.main
@@ -489,8 +583,12 @@ class Packer
                 if main and @isFile file = Path.join modulePath, main    # main
                     return {path:file, modulePath:modulePath, main:main}
             return {path:file} if @isFile file = Path.join modulePath, 'index.js'           # index.js
-        if base != @cfg.base                                                                # abort, if outside project root
+        if base != @cfg.base and base != PROCESS_BASE and base != '/'                       # abort, if outside project root
             return @getNodeModulePath Path.resolve(base, '..'), moduleName                  # try next dir
+
+        # try modules shipped with werkzeug
+        if base != PROCESS_BASE
+            return @getNodeModulePath PROCESS_BASE, moduleName
         null
 
 

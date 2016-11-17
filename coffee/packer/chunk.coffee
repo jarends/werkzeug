@@ -3,7 +3,7 @@ class Chunk
     init: (@cfg) ->
         @cfg.registered = false
         data = detail:@cfg
-        try e = new CustomEvent(@cfg.type, data);
+        try e = new CustomEvent(@cfg.type, data)
 
         if not e
             e = document.createEvent 'CustomEvent'

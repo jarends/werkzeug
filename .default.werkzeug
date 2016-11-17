@@ -3,7 +3,9 @@
     "out": "./.wz.tmp",
 
     "options": {
-        "sourceMaps": true
+        "sourceMaps": true,
+        "includeExternalMaps": false,
+        "fffMaps": false
     },
 
     "coffee": {

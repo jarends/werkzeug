@@ -31,8 +31,10 @@ class Server
         @express.get '*', (request, response, next) =>
             path = Path.join @cfg.base, request.path
             if FSU.isFile path
+                console.log 'server: path not found (serving relative): ', request.path
                 response.sendFile path
             else
+                console.log 'server: path not found (serving index.html): ', request.path
                 response.sendFile Path.join(@root, '/index.html')
 
         #TODO: make the port configurable
