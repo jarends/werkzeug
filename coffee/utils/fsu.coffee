@@ -2,28 +2,28 @@ FS   = require 'fs'
 Path = require 'path'
 
 
-requireSave = (name) ->
-    path = name if isFile name
-    path = name if isFile name + '.js'
-    return null if not path
+requireSave = (path) ->
+    p = path if isFile path
+    p = path + '.js' if not p and isFile path + '.js'
+    return null if not p
     try
-        require path
+        require p
     catch e
         null
 
 
-requireJson = (name) ->
-    path = name if isFile name
-    path = name if isFile name + '.json'
-    return null if not path
+requireJson = (path) ->
+    p = path if isFile path
+    p = path + '.json' if not p and isFile path + '.json'
+    return null if not p
     try
-        JSON.parse FS.readFileSync(path, 'utf8')
+        JSON.parse FS.readFileSync(p, 'utf8')
     catch e
         null
 
 
-requireJsOrJson = (names...) ->
-    path = Path.join.apply null, names
+requireJsOrJson = (paths...) ->
+    path = Path.join.apply null, paths
     r    = requireSave path
     r    = requireJson path if not r
     r

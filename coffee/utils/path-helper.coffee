@@ -5,7 +5,7 @@ TYPES =
     scss:   'sass'
     sass:   'sass'
     less:   'less'
-    stylus: 'stylus'
+    styl:   'styl'
     ts:     'ts'
     coffee: 'coffee'
 
@@ -17,7 +17,7 @@ class PathHelper
 
     @sass   : /\.sass$|\.scss$/
     @less   : /\.less$/
-    @stylus : /\.stylus$/
+    @styl   : /\.styl$/
     @ts     : /\.ts$/
     @coffee : /\.coffee$/
     @js     : /\.js$/
@@ -28,7 +28,7 @@ class PathHelper
 
     @testSass   : (path) -> @sass.  test path
     @testLess   : (path) -> @less.  test path
-    @testStylus : (path) -> @stylus.test path
+    @testStyl   : (path) -> @styl.  test path
     @testTS     : (path) -> @ts.    test path
     @testCoffee : (path) -> @coffee.test path
     @testJS     : (path) -> @js.    test path
@@ -40,7 +40,7 @@ class PathHelper
     @correctOut = (path) ->
         return path.replace(@sass,   '.css') if @testSass  (path)
         return path.replace(@less,   '.css') if @testLess  (path)
-        return path.replace(@stylus, '.css') if @testStylus(path)
+        return path.replace(@styl,   '.css') if @testStyl  (path)
         return path.replace(@ts,     '.js')  if @testTS    (path)
         return path.replace(@coffee, '.js')  if @testCoffee(path)
         path

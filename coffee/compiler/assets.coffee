@@ -29,8 +29,7 @@ class AssetCompiler
             else
                 @remove path
 
-        if not @openFiles
-            @compiled()
+        @compiled() if @openFiles == 0
         null
 
 
@@ -48,17 +47,15 @@ class AssetCompiler
         map = out + '.map'
 
         FSE.remove out, (error) =>
-            --@openFiles
             if FSU.isFile map
                 ++@openFiles
                 FSE.remove map, (error) =>
-                    --@openFiles
                     @errors.push {path:map, error:error} if error
-                    @compiled() if @openFiles == 0
+                    @compiled() if --@openFiles == 0
                     null
 
             @errors.push {path:out, error:error} if error
-            @compiled() if @openFiles == 0
+            @compiled() if --@openFiles == 0
             null
         null
 

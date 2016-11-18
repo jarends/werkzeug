@@ -32,15 +32,7 @@ class CoffeeCompiler
 
     compileFile: (file) ->
         path    = file.path
-        outPath = PH.outFromIn @cfg, 'coffee', path, true
-        mapPath = outPath + '.map'
         ++@openFiles
-
-        options =
-            sourceMap:   true
-            filename:    path
-            sourceRoot:  ''
-            sourceFiles: [Path.relative Path.dirname(outPath), path]
 
         FS.readFile path, 'utf8', (error, source) =>
             if error
@@ -50,6 +42,16 @@ class CoffeeCompiler
                     col:  0
                     text: 'file read error'
             else
+
+                outPath = PH.outFromIn @cfg, 'coffee', path, true
+                mapPath = outPath + '.map'
+                options =
+                    sourceMap:   true
+                    filename:    path
+                    generatedFile: Path.basename outPath
+                    sourceRoot:  ''
+                    sourceFiles: [Path.relative Path.dirname(outPath), path]
+
                 try
                     result = Coffee.compile source, options
                 catch error
@@ -65,7 +67,7 @@ class CoffeeCompiler
                     mapSrc  = result.v3SourceMap
 
                     if mapSrc
-                        jsSrc += "\n//# sourceMappingURL=#{Path.basename mapPath}\n"
+                        jsSrc      += "\n//# sourceMappingURL=#{Path.basename mapPath}\n"
                         FSE.ensureFileSync mapPath
                         FS.writeFileSync mapPath, mapSrc, 'utf8'
 

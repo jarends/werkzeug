@@ -1,4 +1,7 @@
-Less    = require 'less'
+# fix some stylus problems
+require './stylus-fixes'
+
+Stylus  = require 'stylus'
 FS      = require 'fs'
 FSE     = require 'fs-extra'
 Path    = require 'path'
@@ -42,33 +45,35 @@ class LessCompiler
                     col:  0
                     text: 'file read error'
             else
-                outPath = PH.outFromIn @cfg, 'less', path, true
+                outPath = PH.outFromIn @cfg, 'styl', path, true
                 mapPath = outPath + '.map'
                 options =
-                    filename: Path.relative Path.dirname(outPath), path
+                    filename: outPath
                     compress: true
-                    sourceMap:
-                        sourceMapURL:        Path.basename mapPath
-                        sourceMapBasepath:   ''
-                        sourceMapRootpath:   ''
-                        outputSourceFiles:   false
-                        sourceMapFileInline: false
+                    sourcemap:
+                        basePath:   ''
+                        sourceRoot: ''
+                        comment:    false
+                        inline:     false
 
-                Less.render source, options, (error, result) =>
+                style = Stylus(source, options)
+
+                style.render (error, cssSrc) =>
                     ++@openFiles
                     if error
+                        console.log 'styl.error:\n', error
                         @errors.push
-                            path: error.filename
-                            line: error.line
+                            path: path
+                            line: error.lineno
                             col:  error.column + 1
-                            text: error.message
+                            text: error.text
                     else
-                        cssSrc = result.css
-                        mapSrc = result.map
-
+                        mapSrc = style.sourcemap
                         if mapSrc
+                            cssSrc        += "\n/*# sourceMappingURL=#{Path.basename mapPath} */\n"
+                            mapSrc.sources = [Path.relative Path.dirname(outPath), path]
                             FSE.ensureFileSync mapPath
-                            FS.writeFileSync mapPath, mapSrc, 'utf8'
+                            FS.writeFileSync mapPath, JSON.stringify(mapSrc), 'utf8'
 
                         FSE.ensureFileSync outPath
                         FS.writeFileSync outPath, cssSrc, 'utf8'
@@ -82,10 +87,10 @@ class LessCompiler
     compiled: () ->
 
         if @errors.length
-            console.log 'less errors: ', @errors
+            console.log 'stylus errors: ', @errors
 
         @initialized = true
-        @ipc.send 'compiled', 'less', @errors
+        @ipc.send 'compiled', 'styl', @errors
 
 
 module.exports = new LessCompiler()

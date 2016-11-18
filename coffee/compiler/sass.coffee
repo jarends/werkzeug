@@ -2,6 +2,7 @@ Path  = require 'path'
 FSE   = require 'fs-extra'
 FS    = require 'fs'
 Sass  = require 'node-sass'
+_     = require '../utils/pimped-lodash'
 IPC   = require '../utils/ipc'
 PH    = require '../utils/path-helper'
 
@@ -23,17 +24,22 @@ class SassCompiler
 
     compile: (files) ->
         @errors = []
+        for file in files
+            @compileFile file
+        null
+
+
+    compileFile: (file) ->
+        path    = file.path
         options =
             outputStyle: 'compressed'
             sourceMap:   true
 
-        for file in files
-            path = file.path
-            if not /^_/.test Path.basename(path)
-                ++@openFiles
-                options.file    = path
-                options.outFile = PH.outFromIn @cfg, 'sass', path, true
-                Sass.render options, @onResult
+        if not /^_/.test Path.basename(path)
+            ++@openFiles
+            options.file    = path
+            options.outFile = PH.outFromIn @cfg, 'sass', path, true
+            Sass.render options, @onResult
         null
 
 

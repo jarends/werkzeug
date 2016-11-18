@@ -64,7 +64,7 @@ class TSCompiler
         @outBase        = PH.getOut @cfg, 'ts'
         options.rootDir = @inBase
         options.outDir  = @outBase
-        options.sourceRoot = ''
+        options.sourceRoot = Path.relative @outBase, @inBase
         @parseTSConfig()
         @addTypings()
         @loadTSLintConfig()
@@ -72,7 +72,7 @@ class TSCompiler
 
 
     parseTSConfig: () ->
-        @tscfg = FSU.require @cfg.base, 'tsconfig.json'
+        @tscfg = FSU.require @cfg.base, 'tsconfig'
 
         if @tscfg
             parsed = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
@@ -94,9 +94,9 @@ class TSCompiler
 
 
     loadTSLintConfig: () ->
-        cfg = FSU.require @cfg.base, 'tslint.json'
-        cfg = FSU.require Home(), 'tslint.json' if not cfg
-        cfg = FSU.require __dirname, '..', '..', '.default.tslint.json'  if not cfg
+        cfg = FSU.require @cfg.base, 'tslint'
+        cfg = FSU.require Home(), 'tslint' if not cfg
+        cfg = FSU.require __dirname, '..', '..', '.default.tslint'  if not cfg
 
         #TODO: handle error
         if not cfg

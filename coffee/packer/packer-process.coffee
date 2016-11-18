@@ -4,6 +4,7 @@ nga                = require 'ng-annotate/ng-annotate-main'
 Dict               = require 'jsdictionary'
 Babel              = require 'babel-core'
 Babel_es2015       = require 'babel-preset-es2015'
+JMin               = require 'jsonminify'
 IPC                = require '../utils/ipc'
 FSU                = require '../utils/fsu'
 PH                 = require '../utils/path-helper'
@@ -406,11 +407,26 @@ class Packer
         if /.js$/.test file.path
             code += "function(module, exports, require) {\r\nmodule.id = '#{moduleId}';\r\n#{source}\r\n},\r\n"
             @addSourceMap p, file, false
+
         else
-            str = source.replace(/'/g, '\\\'').replace(/\r\n|\n/g, '\\n')
+            # replace ' with \'
+            source = source.replace /(^|[^\\])(')/g, "$1\\'"
+
+            # surround with quotes
+            source = "'#{source}'"
+
+            #TODO: maybe do JSON.parse to check for json -> currently json files without extension can't be required
+            if /.json$/.test file.path
+                source = "JSON.parse(#{JMin source})"
+
+            # replace newlines with \n
+            source = source.replace /\r\n|\n/g, '\\n'
+
+            # html can have nested requireds: ${require('path/to/html')}
             if /.html$/.test file.path
-                str = str.replace /\${\s*(require\s*\(\s*\d*?\s*\))\s*}/g, '\' + $1 + \''
-            code += "function(module, exports, require) {\r\nmodule.exports = '#{str}';\r\n},\r\n"
+                source = source.replace /\${\s*(require\s*\(\s*\d*?\s*\))\s*}/g, "' + $1 + '"
+
+            code += "function(module, exports, require) {\r\nmodule.exports = #{source};\r\n},\r\n"
             @addSourceMap p, file, true
 
         p.code += code
@@ -474,7 +490,7 @@ class Packer
                     includeExt = @cfg.options.includeExternalMaps
 
                     if FSU.isFile(mapPath) and (PH.isOutChild(@cfg, 'packer', path) or includeExt)
-                        map            = JSON.parse FS.readFileSync(mapPath, 'utf8')
+                        map            = FSU.require mapPath
                         map.file       = Path.basename path
                         file.sourceMap = map
                         mapDir         = Path.dirname mapPath
