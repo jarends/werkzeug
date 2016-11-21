@@ -4,6 +4,7 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "sourceMap": true,
+        "listEmittedFiles": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "removeComments": false,
@@ -17,11 +18,5 @@
         "allowSyntheticDefaultImports": true,
         "lib": [],
         "types": []
-    },
-    "compileOnSave": false,
-    "buildOnSave": false,
-    "atom": {
-        "rewriteTsconfig": false,
-        "formatOnSave": false
     }
 }

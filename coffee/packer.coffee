@@ -2,6 +2,7 @@ Path   = require 'path'
 CP     = require 'child_process'
 SW     = require './utils/stopwatch'
 IPC    = require './utils/ipc'
+Log    = require './utils/log'
 PACKER = Path.join __dirname, 'packer', 'packer-process'
 
 
@@ -18,7 +19,7 @@ class Packer
 
     pack: (files) ->
         if files and files.length
-            console.log "start packing...".cyan
+            Log.info 'packer', "starting ..."
             SW.start 'packer'
             if not @initialized
                 @packer.send 'readPackages'
@@ -36,10 +37,12 @@ class Packer
     packed: (errors) ->
         t = SW.stop 'packer'
         l = errors.length
+
         if l > 0
-            console.log "packed in #{t}ms with #{l} #{if l > 1 then 'errors' else 'error'}".red, errors
+            e = "#{l} #{Log.count l, 'error'}".red
+            Log.info 'packer', "packed in #{Log.ftime t} with #{e}", errors
         else
-            console.log "packed in #{t}ms without errors".green
+            Log.info 'packer', "packed in #{Log.ftime t} #{Log.ok}"
 
         @initialized = true
         @errors      = errors

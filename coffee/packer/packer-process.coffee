@@ -5,10 +5,10 @@ Dict               = require 'jsdictionary'
 Babel              = require 'babel-core'
 Babel_es2015       = require 'babel-preset-es2015'
 JMin               = require 'jsonminify'
-IPC                = require '../utils/ipc'
 FSU                = require '../utils/fsu'
 PH                 = require '../utils/path-helper'
-SW                 = require '../utils/stopwatch'
+IPC                = require '../utils/ipc'
+Log                = require '../utils/log'
 PROCESS_BASE       = Path.join __dirname, '..', '..'
 PACK_CODE          = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
 CHUNK_CODE         = FS.readFileSync Path.join(__dirname, 'chunk.js'), 'utf8'
@@ -115,24 +115,27 @@ class Packer
     update: (files) ->
         errors   = @errors or []
         @errors  = []
+        updated  = {}
         for f in files
             path = PH.outFromIn @cfg, 'packer', f.path, true
             file = @fileMap[path]
-            if file
-                if file.removed
-                    @remove file
-                else
-                    # indexers unshift/shift behaviour keeps parent linking correct
-                    @clear file
-                    @readFile path
+            continue if not file or updated[path]
+            updated[path] = true
+            if file.removed
+                @remove file
+            else
+                # indexers unshift/shift behaviour keeps parent linking correct
+                @clear file
+                @readFile path
 
         for error in errors
             path = error.path
             file = @fileMap[path]
-            if file
-                # indexers unshift/shift behaviour keeps parent linking correct
-                @clear file
-                @readFile path
+            continue if not file or updated[path]
+            updated[path] = true
+            # indexers unshift/shift behaviour keeps parent linking correct
+            @clear file
+            @readFile path
 
         if @openFiles == 0
             @completed()
@@ -410,7 +413,8 @@ class Packer
 
         else
             # replace ' with \'
-            source = source.replace /(^|[^\\])(')/g, "$1\\'"
+            source = source.replace /'/g, (args...) ->
+                if args[2][args[1] - 1] != '\\' then "\\'" else "'"
 
             # surround with quotes
             source = "'#{source}'"

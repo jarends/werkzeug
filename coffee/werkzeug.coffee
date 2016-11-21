@@ -1,7 +1,6 @@
 Emitter  = require 'events'
 FS       = require 'fs'
 Path     = require 'path'
-Colors   = require 'colors'
 Config   = require './config'
 Server   = require './server'
 Walker   = require './walker'
@@ -10,11 +9,11 @@ Compiler = require './compiler'
 Packer   = require './packer'
 Builder  = require './builder'
 FSU      = require './utils/fsu'
-SW       = require './utils/stopwatch'
 PH       = require './utils/path-helper'
+Log      = require('./utils/log').mapLogs()
 
 
-
+#TODO: set ts.noEmitOnError = true and merge packer errors back to compiler errors!!!
 
 #TODO: make sourcemaps optional
 
@@ -33,28 +32,6 @@ PH       = require './utils/path-helper'
 
 
 
-###
-    colors:
-
-    black
-    red
-    green
-    yellow
-    blue
-    magenta
-    cyan
-    white
-    gray
-    grey
-###
-
-#TODO: implement theme???
-Colors.setTheme
-    error: 'red'
-
-
-
-
 class Werkzeug extends Emitter
 
 
@@ -66,9 +43,8 @@ class Werkzeug extends Emitter
     constructor: (base) ->
         super
 
-        console.log 'werkzeug starting...'.cyan
-
-        SW.start 'wz.startup'
+        Log.info 'werkzeug', 'starting ...'
+        Log.startTicker 'werkzeug starting'
 
         @cfg         = new Config(base)
         @server      = new Server  (@)
@@ -126,7 +102,10 @@ class Werkzeug extends Emitter
     compile: () ->
         return if not @idle
         @idle = false
-        SW.start 'wz.update'
+        if @initialized
+            Log.startTicker 'compiling'
+        else
+            Log.setTicker 'compiling'
         @compiler.compile()
         @cleanFiles()
         @dirty = false
@@ -142,27 +121,30 @@ class Werkzeug extends Emitter
     pack: () ->
         return if not @idle
         @idle = false
+        Log.setTicker 'packing'
         @packer.pack(@compiler.files)
         null
 
 
     packed: () ->
         @idle = true
+        time  = Log.stopTicker()
+
         if not @initialized
             @initialized = true
             if @watcher.watching
-                console.log "werkzeug startup in #{SW.stop 'wz.startup'}ms".cyan
+                Log.info 'werkzeug', "startup in #{Log.ftime time}"
             else
-                console.log "werkzeug single run in #{SW.stop 'wz.startup'}ms".cyan
+                Log.info 'werkzeug', "single run in #{Log.ftime time}"
 
         else if @compiler.files and @compiler.files.length
-            console.log "werkzeug update in #{SW.stop 'wz.update'}ms".cyan
+            Log.info 'werkzeug', "updated in #{Log.ftime time}"
 
         if @watcher.watching
             if @dirty
                 @update()
             else if @compiler.files and @compiler.files.length
-                console.log 'start watching ...'.cyan
+                Log.info 'werkzeug', 'start watching ...'
         else
             @terminate()
         null

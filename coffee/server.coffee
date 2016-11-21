@@ -1,7 +1,8 @@
 Path   = require 'path'
 CP     = require 'child_process'
 IPC    = require './utils/ipc'
-SW     = require './utils/stopwatch'
+PH     = require './utils/path-helper'
+Log    = require './utils/log'
 SERVER = Path.join __dirname, 'server', 'server-process'
 
 
@@ -20,7 +21,8 @@ class Server
         null
 
     serverReady: (port) ->
-        console.log "server listening on port #{port}"
+        #root = PH.getOut @cfg, 'server'
+        Log.info 'server', "listening on port #{port}"
         null
 
 

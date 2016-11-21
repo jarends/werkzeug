@@ -1,7 +1,8 @@
 FSE = require 'fs-extra'
 FSU = require '../utils/fsu'
-IPC = require '../utils/ipc'
 PH  = require '../utils/path-helper'
+IPC = require '../utils/ipc'
+Log = require '../utils/log'
 
 
 class AssetCompiler

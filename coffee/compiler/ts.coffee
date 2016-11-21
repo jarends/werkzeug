@@ -6,34 +6,13 @@ Walk   = require 'walkdir'
 Home   = require 'homedir'
 _      = require '../utils/pimped-lodash'
 FSU    = require '../utils/fsu'
-IPC    = require '../utils/ipc'
 SW     = require '../utils/stopwatch'
 PH     = require '../utils/path-helper'
+IPC    = require '../utils/ipc'
+Log    = require '../utils/log'
 
 
 #TODO: load project specific tsconfig and put options in .default.tsconfig
-
-node_modules = Path.join __dirname, '..', '..', 'node_modules'
-
-options =
-    target:                         ts.ScriptTarget.ES5
-    module:                         ts.ModuleKind.CommonJS
-    moduleResolution:               ts.ModuleResolutionKind.NodeJs
-    rootDir:                        ''
-    outDir:                         ''
-    baseUrl:                        node_modules
-    sourceMap:                      true
-    experimentalDecorators:         true
-    emitDecoratorMetadata:          true
-    removeComments:                 false
-    noImplicitAny:                  false
-    noEmit:                         false
-    noEmitHelpers:                  true
-    importHelpers:                  true
-    noEmitOnError:                  false
-    preserveConstEnums:             true
-    suppressImplicitAnyIndexErrors: true
-    allowSyntheticDefaultImports:   true
 
 
 linterOptions =
@@ -58,25 +37,39 @@ class TSCompiler
         @ipc           = new IPC(process, @)
 
 
+
+
     init: (@cfg) ->
         @tslintCfg      = {}
         @inBase         = PH.getIn  @cfg, 'ts'
         @outBase        = PH.getOut @cfg, 'ts'
-        options.rootDir = @inBase
-        options.outDir  = @outBase
-        options.sourceRoot = Path.relative @outBase, @inBase
-        @parseTSConfig()
-        @addTypings()
+        @loadTSConfig()
         @loadTSLintConfig()
+
+        #for key of ts
+        #    console.log 'ts: ', key
+
         null
 
 
-    parseTSConfig: () ->
-        @tscfg = FSU.require @cfg.base, 'tsconfig'
+    loadTSConfig: () ->
+        @tscfg = FSU.require __dirname, '..', '..', '.default.tsconfig'
+        @tscfg = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
 
-        if @tscfg
-            parsed = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
-            console.log 'parsed config: ', parsed
+
+        tscfg = FSU.require @cfg.base, 'tsconfig'
+        if tscfg and tscfg.compilerOptions
+            tscfg  = ts.convertCompilerOptionsFromJson tscfg.compilerOptions
+            @tscfg = _.deepExtend @tscfg, tscfg
+
+        @tscfg.options.sourceMap  = true
+        @tscfg.options.rootDir    = @inBase
+        @tscfg.options.outDir     = @outBase
+        @tscfg.options.sourceRoot = Path.relative @outBase, @inBase
+        @tscfg.options.baseUrl    = Path.join __dirname, '..', '..', 'node_modules'
+
+        #console.log 'parsed tscfg: ', @tscfg.options
+        @addTypings()
 
         null
 
@@ -104,6 +97,12 @@ class TSCompiler
 
         _.deepMerge linterOptions.configuration, cfg
         null
+
+
+
+
+
+
 
 
     addPath: (path) ->
@@ -140,7 +139,7 @@ class TSCompiler
         @createService() if not @service
 
         if not @initialized or files.length > 20
-            @compileAll @paths, options
+            @compileAll @paths
         else
             @program = @service.getProgram()
             for file in files
@@ -150,8 +149,11 @@ class TSCompiler
         null
 
 
-    compileAll: (paths, options) ->
-        @program       = ts.createProgram paths, options
+    compileAll: (paths) ->
+        host = ts.createCompilerHost @tscfg.options
+        #host.resolveModuleNames = @resolveModuleNames
+
+        @program       = ts.createProgram paths, @tscfg.options, host
         emitResult     = @program.emit()
         allDiagnostics = ts.getPreEmitDiagnostics(@program).concat emitResult.diagnostics
 
@@ -159,7 +161,7 @@ class TSCompiler
             if diagnostic.file
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
                 message             = ts.flattenDiagnosticMessageText diagnostic.messageText, '\n'
-                @errors.push
+                @addError
                     path: diagnostic.file.fileName
                     line: line + 1
                     col:  character + 1
@@ -182,7 +184,7 @@ class TSCompiler
             if diagnostic.file
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
                 message             = ts.flattenDiagnosticMessageText diagnostic.messageText, '\n'
-                @errors.push
+                @addError
                     path: diagnostic.file.fileName
                     line: line + 1
                     col:  character + 1
@@ -191,27 +193,74 @@ class TSCompiler
             else
                 console.log 'diagnostic without file: ', diagnostic
 
-        if not hasErrors or true
+        if not hasErrors
             for file in output.outputFiles
                 FS.writeFileSync file.name, file.text, "utf8"
         null
+
+
+    addError: (error) ->
+        for e in @errors
+            equal = true
+            for key, value of e
+                equal = equal and (error[key] == value)
+            return if equal
+        @errors.push error
 
 
 
 
     createService: () ->
         @servicesHost =
-            getScriptFileNames:    ()     => @paths
-            getScriptVersion:      (path) => @fileMap[path] && @fileMap[path].version.toString()
-            getScriptSnapshot:     (path) ->
-                return undefined if not FSU.isFile path
-                ts.ScriptSnapshot.fromString FS.readFileSync(path).toString()
-            getCurrentDirectory:    ()        -> process.cwd()
-            getCompilationSettings: ()        -> options
-            getDefaultLibFileName:  (options) -> ts.getDefaultLibFilePath options
+            getScriptFileNames: () =>
+                @paths
+
+            getScriptVersion: (path) =>
+                @fileMap[path] and @fileMap[path].version.toString()
+
+            getScriptSnapshot: (path) =>
+                try
+                    ts.ScriptSnapshot.fromString FS.readFileSync(path, 'utf8')
+                catch
+                    undefined
+
+            getCurrentDirectory: () =>
+                @cfg.base
+
+            getCompilationSettings: () =>
+                @tscfg.options
+
+            getDefaultLibFileName: (options) ->
+                @defaultLibFilePath or @defaultLibFilePath = ts.getDefaultLibFilePath options
+
+            #resolveModuleNames: @resolveModuleNames
+
 
         @service = ts.createLanguageService @servicesHost, ts.createDocumentRegistry()
         null
+
+
+
+
+    fileExists: (path) -> ts.sys.fileExists path
+    readFile:   (path) -> ts.sys.readFile path
+
+
+    resolveModuleNames: (moduleNames, containingFile) =>
+        moduleNames.map (moduleName) =>
+            result = ts.resolveModuleName moduleName, containingFile, @tscfg.options, {fileExists:@fileExists, readFile:@readFile}
+
+            #if /emap/.test moduleName
+            #    console.log 'result for emap: ', containingFile, moduleNames
+
+            #if /tslib/.test moduleName
+            #    console.log 'result for tslib: ', result
+
+            if result.resolvedModule
+                return result.resolvedModule;
+            undefined
+
+
 
 
     lint: () ->
@@ -251,18 +300,25 @@ class TSCompiler
 
 
     compiled: () ->
-        SW.start 'linter'
-        @lint() if @errors.length == 0 and (@initialized or not @cfg.tslint.ignoreInitial)
 
-        console.log "linter tooks: #{SW.stop 'linter'}ms"
+        if @errors.length == 0 and (@initialized or not @cfg.tslint.ignoreInitial)
+            SW.start 'linter'
+            @lint()
+            t = SW.stop 'linter'
+            l = @linterErrors.length
+            if l > 0
+                e = "#{l} #{Log.count l, 'error'}".red
+                Log.info 'tslint', "compiled in #{Log.ftime t} with #{e}"
+            else
+                Log.info 'tslint', "compiled in #{Log.ftime t} #{Log.ok}"
+
+            if @linterErrors.length
+                console.log 'tslint.errors: \n', @linterErrors
 
         @initialized = true
 
         if @errors.length
             console.log 'ts.errors: \n', @errors
-
-        if @linterErrors.length
-            console.log 'tslint.errors: \n', @linterErrors
 
         @ipc.send 'compiled', 'ts', @errors
         null

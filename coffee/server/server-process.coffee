@@ -4,8 +4,9 @@ BodyParser = require 'body-parser'
 Portfinder = require 'portfinder'
 _          = require 'lodash'
 FSU        = require '../utils/fsu'
-IPC        = require '../utils/ipc'
 PH         = require '../utils/path-helper'
+IPC        = require '../utils/ipc'
+Log        = require '../utils/log'
 
 
 class Server
@@ -24,8 +25,6 @@ class Server
         @express.use BodyParser.json()
         @express.use BodyParser.urlencoded extended:true
         @express.use '/', Express.static @root
-
-        console.log 'server serving from: ', @root
 
         # mod rewrite fake
         @express.get '*', (request, response, next) =>

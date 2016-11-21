@@ -1,12 +1,13 @@
 # fix some stylus problems
 require './stylus-fixes'
 
-Stylus  = require 'stylus'
-FS      = require 'fs'
-FSE     = require 'fs-extra'
-Path    = require 'path'
-IPC     = require '../utils/ipc'
-PH      = require '../utils/path-helper'
+Stylus = require 'stylus'
+FS     = require 'fs'
+FSE    = require 'fs-extra'
+Path   = require 'path'
+PH     = require '../utils/path-helper'
+IPC    = require '../utils/ipc'
+Log    = require '../utils/log'
 
 
 

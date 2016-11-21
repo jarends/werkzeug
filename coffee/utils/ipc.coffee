@@ -1,28 +1,28 @@
 Emitter = require 'events'
 EMap    = require 'emap'
 _       = require '../utils/pimped-lodash'
-
+Log     = require '../utils/log'
+Process = process
 
 class IPC extends Emitter
 
 
-    @isChild = () -> process.send and not module.parent
-
-
     constructor: (process, @owner) ->
-        @emap = new EMap()
-        @init process, @owner if process
-
-
-    init: (process, @owner) ->
-        @emap.all() if @process
+        @emap    = new EMap()
         @process = process
+
         @emap.map process, 'message',    @messageHandler,    @
         #TODO: react to events - maybe restart forked process or entire app
         @emap.map process, 'close',      @closeHandler,      @
         @emap.map process, 'disconnect', @disconnectHandler, @
         @emap.map process, 'error',      @errorHandler,      @
         @emap.map process, 'exit',       @exitHandler,       @
+
+        if process == Process
+            console.log = @log
+            Log.log     = @log
+            Log.console = @
+
         null
 
 
@@ -38,6 +38,13 @@ class IPC extends Emitter
         @process.kill() if @process
 
 
+    log: (args...) =>
+        return null if not @process or not @process.connected
+        @process.send
+            type: 'ipc.log'
+            args: args
+        null
+
 
     messageHandler: (message) ->
         type = message?.type
@@ -45,7 +52,10 @@ class IPC extends Emitter
         args = message.args || []
         return null if not _.isArray args
 
-        if @owner and _.isFunction @owner[type]
+        if type == 'ipc.log'
+            Log.apply null, args
+
+        else if @owner and _.isFunction @owner[type]
             try
                 @owner[type].apply @owner, args
 

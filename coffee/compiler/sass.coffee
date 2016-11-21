@@ -1,10 +1,11 @@
-Path  = require 'path'
-FSE   = require 'fs-extra'
-FS    = require 'fs'
-Sass  = require 'node-sass'
-_     = require '../utils/pimped-lodash'
-IPC   = require '../utils/ipc'
-PH    = require '../utils/path-helper'
+Path = require 'path'
+FSE  = require 'fs-extra'
+FS   = require 'fs'
+Sass = require 'node-sass'
+_    = require '../utils/pimped-lodash'
+PH   = require '../utils/path-helper'
+IPC  = require '../utils/ipc'
+Log  = require '../utils/log'
 
 
 class SassCompiler

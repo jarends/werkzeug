@@ -3,6 +3,7 @@ CP     = require 'child_process'
 IPC    = require './utils/ipc'
 SW     = require './utils/stopwatch'
 PH     = require './utils/path-helper'
+Log    = require './utils/log'
 TS     = Path.join __dirname, 'compiler', 'ts'
 COFFEE = Path.join __dirname, 'compiler', 'coffee'
 SASS   = Path.join __dirname, 'compiler', 'sass'
@@ -141,7 +142,7 @@ class Compiler
 
         l = @files.length
         if l
-            console.log "start compiling... (#{l} #{if l > 1 then 'files' else 'file'})".cyan
+            Log.info 'compiler', "starting ... (#{l} #{Log.count l, 'file'})"
         else
             @wz.compiled()
 
@@ -166,17 +167,19 @@ class Compiler
         t = SW.stop 'compiler.' + comp
         l = errors.length
         if l > 0
-            console.log "#{comp} compiled in #{t}ms with #{errors.length} #{if l > 1 then 'errors' else 'error'}".red
+            e = "#{l} #{Log.count l, 'error'}".red
+            Log.info comp, "compiled in #{Log.ftime t} with #{e}"
         else
-            console.log "#{comp} compiled in #{t}ms without errors".green
+            Log.info comp, "compiled in #{Log.ftime t} #{Log.ok}"
 
         if @ts.compiled and @coffee.compiled and @sass.compiled and @less.compiled and @styl.compiled and @assets.compiled
             t = SW.stop 'compiler.all'
             l = @errors.length
             if @errors.length > 0
-                console.log "all compiled in #{t}ms with #{l} #{if l > 1 then 'errors' else 'error'}".red
+                e = "#{l} #{Log.count l, 'error'}".red
+                Log.info 'compiler', "all compiled in #{Log.ftime t} with #{e}"
             else
-                console.log "all compiled in #{t}ms without errors".green
+                Log.info 'compiler', "all compiled in #{Log.ftime t} #{Log.ok}"
 
             @wz.compiled()
 
