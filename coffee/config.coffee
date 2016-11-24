@@ -9,8 +9,8 @@ class Config
 
     constructor: (@base, cfgOrPath) ->
         if _.isString cfgOrPath
-            cfg = FSU.require Path.join(@base, cfgOrPath)
-            cfg = FSU.require cfgOrPath if not cfg
+            cfg = FSU.require(Path.join @base, cfgOrPath)
+            cfg = FSU.require(cfgOrPath) if not cfg
 
         cfg = FSU.require @base,  '.werkzeug' if not cfg
         cfg = FSU.require Home(), '.werkzeug' if not cfg

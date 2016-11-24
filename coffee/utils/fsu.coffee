@@ -4,7 +4,7 @@ Path = require 'path'
 
 requireSave = (path) ->
     p = path if isFile path
-    p = path + '.js' if not p and isFile path + '.js'
+    p = path + '.json' if not p and isFile path + '.json'
     return null if not p
     try
         require p
@@ -24,8 +24,8 @@ requireJson = (path) ->
 
 requireJsOrJson = (paths...) ->
     path = Path.join.apply null, paths
-    r    = requireSave path
-    r    = requireJson path if not r
+    r = requireSave path
+    r = requireJson path if not r
     r
 
 
@@ -42,13 +42,10 @@ rmDir = (dir) ->
     FS.rmdirSync dir
 
 
-getExt = (path, ext) ->
-    return null if not path
-    if ext
-        return '' if new RegExp( '\\.' + ext + '$').test path
-        return ext
-    return path.split('.').pop() if path.indexOf '.' > -1
-    ''
+testExt = (path, ext) ->
+    ext = '.' + ext if ext[0] != '.'
+    return '' if new RegExp(ext + '$').test path
+    ext
 
 
 isDir = (path) ->
@@ -69,12 +66,49 @@ getStat = (path) ->
     catch
         null
 
+getModulePath: (base, name) ->
+    if /\.|\//.test(name[0])
+        getRelModulePath base, name
+    else
+        getNodeModulePath base, name
+
+
+getRelModulePath = (base, name) ->
+    ext  = testExt name, '.js'
+    path = Path.resolve base, name
+    return file if isFile file = path + ext                    # js file found
+    return file if isFile file = Path.join path, 'index.js'    # index.js file found
+    return path if ext and @isFile path                         # asset file found
+    null
+
+
+getNodeModulePath = (base, name) ->
+    nodePath   = Path.join base, 'node_modules'
+    modulePath = Path.join nodePath, name
+
+    if isDir nodePath
+        ext = testExt name, '.js'
+        return file if isFile file = modulePath + ext                                  # .js
+        file = Path.join modulePath, 'package.json'                          # package.json
+        try
+            json = FSU.requireJson file
+            main = json?.main
+        catch
+        if main and isFile file = Path.join modulePath, main                       # main
+            return file
+        return file if isFile file = Path.join modulePath, 'index.js'           # index.js
+    if base != PROCESS_BASE and base != '/'                       # abort, if outside project root
+        return @getNodeModulePath Path.resolve(base, '..'), name                  # try next dir
+    null
+
+
+
 module.exports =
     require:     requireJsOrJson
     requireSave: requireSave
     requireJson: requireJson
     rmDir:       rmDir
-    getExt:      getExt
+    testExt:     testExt
     isDir:       isDir
     isFile:      isFile
     getStat:     getStat

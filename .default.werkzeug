@@ -1,33 +1,43 @@
 {
-    "in":  "./src",
+    "in": "./src",
     "out": "./.wz.tmp",
-
     "options": {
         "sourceMaps": true,
         "includeExternalMaps": false,
         "fffMaps": false
     },
-
+    "server": {
+        "enabled": true,
+        "port": 3001
+    },
     "coffee": {
+        "enabled": true
     },
     "ts": {
+        "enabled": true
     },
     "sass": {
+        "enabled": true
     },
     "less": {
+        "enabled": true
     },
     "stylus": {
+        "enabled": true
     },
     "assets": {
+        "enabled": true
     },
     "tslint": {
+        "enabled": true,
         "ignoreInitial": true
     },
     "packer": {
+        "enabled": true,
         "nga": false,
         "bigChunks": true,
         "chunks": "./chunk_",
-        "loaderPrefix":"^es6-promise\\!",
+        "loaderPrefix": "^es6-promise\\!",
         "packages": []
     }
 }

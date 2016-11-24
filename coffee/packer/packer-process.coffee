@@ -1,4 +1,5 @@
 FS                 = require 'fs'
+FSE                = require 'fs-extra'
 Path               = require 'path'
 nga                = require 'ng-annotate/ng-annotate-main'
 Dict               = require 'jsdictionary'
@@ -57,15 +58,16 @@ class Indexer
 
     constructor: () ->
         @current = -1
-        @free    = []
+        @cache   = {}
 
-    get: () ->
-        if @free.length
-            return @free.shift()
+    get: (path) ->
+        cached = @cache[path]
+        if not isNaN cached
+            return cached
         ++@current
 
-    remove: (index) ->
-        @free.unshift index
+    remove: (path, index) ->
+        @cache[path] = index
         null
 
 
@@ -94,6 +96,7 @@ class Packer
         @packs      = null  # packaging: list of current packs
         @chunks     = null  # packaging: list of current chunks
         @ipc        = new IPC(process, @)
+        @errors     = []
 
 
     init: (@cfg) ->
@@ -113,19 +116,21 @@ class Packer
 
 
     update: (files) ->
-        errors   = @errors or []
-        @errors  = []
-        updated  = {}
+        errors  = @errors
+        @errors = []
+        updated = {}
         for f in files
             path = PH.outFromIn @cfg, 'packer', f.path, true
             file = @fileMap[path]
+
+
+
             continue if not file or updated[path]
             updated[path] = true
             if file.removed
                 @remove file
             else
-                # indexers unshift/shift behaviour keeps parent linking correct
-                @clear file
+                @clear    file
                 @readFile path
 
         for error in errors
@@ -133,7 +138,6 @@ class Packer
             file = @fileMap[path]
             continue if not file or updated[path]
             updated[path] = true
-            # indexers unshift/shift behaviour keeps parent linking correct
             @clear file
             @readFile path
 
@@ -142,51 +146,33 @@ class Packer
         null
 
 
-
     remove: (file) ->
         @clear file
-
-        path = file.path
-        for ppath in file.ref
-            parent = @fileMap[ppath]
-            delete parent.req[path]
-            delete file.ref[ppath]
         null
 
 
     clear: (file) ->
         path = file.path
-        for rpath of file.req
-            rfile = @fileMap[rpath]
-            delete rfile.ref[path]
-            delete file.req[rpath]
+        for reqPath of file.req
+            req = @fileMap[reqPath]
+            delete req.ref[path]
+            delete file.req[reqPath]
 
-        for rpath of file.reqAsL
-            loaderRefs = @loaders[rpath]
+        for loderPath of file.reqAsL
+            loaderRefs = @loaders[loderPath]
             if loaderRefs
                 delete loaderRefs[path]
                 if not Dict.hasKeys loaderRefs
-                    delete @loaders[rpath]
-            delete file.reqAsL[rpath]
+                    delete @loaders[lpath]
+            delete file.reqAsL[lpath]
 
         delete @fileMap[path]
-        @indexer.remove file.index
+        @indexer.remove path, file.index
         null
 
 
-
-
-    completed: () =>
-
-        for pack in @packs
-            console.log 'pack: ', pack.numModules, pack.file.path
-
-        for chunk in @chunks
-            console.log 'chunk: ', chunk.index, chunk.numModules, chunk.file.path
-
-        console.log 'total modules: ', @totalModules
-        @ipc.send 'packed', @errors
-        null
+    isRequired: (file) ->
+        Dict.hasKeys file.ref or @loaders[file.path]
 
 
 
@@ -266,7 +252,13 @@ class Packer
         p.req[file.path]    = true
         for rpath of file.req
             rfile = @fileMap[rpath]
-            if rfile and not @packed[rfile.index]
+            if not rfile
+                @errors.push
+                    path: file.path
+                    line: -1
+                    col:  -1
+                    text: 'required file not found: ' + rpath
+            else if not @packed[rfile.index]
                 # add all loaders to the pack -> used by cleanupChunks
                 for lpath of rfile.reqAsL
                     p.loaders[lpath] = true
@@ -278,9 +270,16 @@ class Packer
         file.loaders[loader.path] = true
         loader.parts[file.path]   = true
         @loaded[file.path]        = true
-        for path of file.req
-            rfile = @fileMap[path]
-            @gatherChunks(loader, rfile) if not loader.parts[rfile.path]
+        for rpath of file.req
+            rfile = @fileMap[rpath]
+            if not rfile
+                @errors.push
+                    path: file.path
+                    line: -1
+                    col:  -1
+                    text: 'required file not found: ' + rpath
+            else
+                @gatherChunks(loader, rfile) if not loader.parts[rpath]
         null
 
 
@@ -355,6 +354,7 @@ class Packer
 
     writeSourceMap: (pack) ->
         mapOut = pack.out + '.map'
+        FSE.ensureFileSync mapOut
         FS.writeFileSync mapOut, JSON.stringify(@sourceMap), 'utf8'
         pack.code += "\r\n//# sourceMappingURL=#{Path.relative @out, pack.out}.map"
 
@@ -370,6 +370,7 @@ class Packer
         @writeSourceMap p
 
         #TODO: handle write errors
+        FSE.ensureFileSync p.out
         FS.writeFile p.out, p.code, 'utf8', (error) =>
             --@openPacks
             if error
@@ -389,6 +390,7 @@ class Packer
         @writeSourceMap p
 
         #TODO: handle write errors
+        FSE.ensureFileSync p.out
         FS.writeFile p.out, p.code, 'utf8', (error) =>
             --@openPacks
             if error
@@ -439,6 +441,10 @@ class Packer
 
 
 
+
+
+
+
     readFile: (path, parent) ->
         file = @fileMap[path]
         if file
@@ -448,7 +454,7 @@ class Packer
             return file
 
         file = @fileMap[path] =
-            index:     @indexer.get()
+            index:     @indexer.get path
             path:      path
             source:    ''
             sourceMap: ''
@@ -475,12 +481,11 @@ class Packer
                     text: 'file read error'
             else
                 #TODO: babel should be a compiler
-                #TODO: think about a better detection
                 # use babel if file is in node-modules and isn't an umd module and has an import statement
-                if /node_modules/.test(path) and not /\.umd\./.test(path) and /import /g.test(source)
-                    result      = Babel.transform source, babelOptions
-                    console.log 'babel transformed: ' + path
+                if /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const )/gm.test(source)
+                    result = Babel.transform source, babelOptions
                     source = result.code
+                #console.log 'babel transformed: ' + path
 
                 # handle source map
                 if PH.testJS(path)
@@ -493,11 +498,10 @@ class Packer
                     fixFF      = @cfg.options.fffMaps
                     includeExt = @cfg.options.includeExternalMaps
 
-                    if FSU.isFile(mapPath) and (PH.isOutChild(@cfg, 'packer', path) or includeExt)
+                    if FSU.isFile(mapPath) and (path.indexOf(@out) == 0 or includeExt)
                         map            = FSU.require mapPath
                         map.file       = Path.basename path
                         file.sourceMap = map
-                        mapDir         = Path.dirname mapPath
 
                         # only touch sourcesContent to fix firefox sourcemap bug
                         if fixFF
@@ -506,13 +510,14 @@ class Packer
                         # correct paths to original sources
                         # and include sources, if firefox fixing is enabled
                         for sourcePath, i in map.sources
-                            absSourcePath = Path.join mapDir, map.sourceRoot, sourcePath
+                            absSourcePath = Path.join map.sourceRoot, sourcePath
                             if fixFF and not map.sourcesContent[i]
                                 # add all original sources to the map to fix firefox sourcemap bug
                                 if FSU.isFile(absSourcePath)
                                     map.sourcesContent.push FS.readFileSync(absSourcePath, 'utf8')
                                 else
                                     map.sourcesContent.push ''
+                            #console.log '', absSourcePath
                             map.sources[i] = Path.relative @out, absSourcePath
 
                         map.sourceRoot = ''
@@ -542,20 +547,16 @@ class Packer
             name     = PH.correctOut args[regPos]
             isLoader = loaderRegex.test name
             name     = name.replace /^es6-promise\!/, '' if isLoader
-            isRel    = /\.|\//.test(name[0])
 
-            if isRel
-                pathObj = @getRelModulePath base, name
+            if /\.|\//.test(name[0])
+                modulePath = @getRelModulePath base, name
             else
-                pathObj = @getNodeModulePath base, name
-                if pathObj and not @nodes[pathObj.path]
-                    @nodes[pathObj.path] = true  # currently unused
+                modulePath = @getNodeModulePath base, name
+                if modulePath and not @nodes[modulePath]
+                    @nodes[modulePath] = true  # currently unused
 
-            if pathObj
-                rfile = @readFile pathObj.path, file
-                if pathObj.main # currently unused
-                    rfile.modulePath = pathObj.modulePath
-                    rfile.main       = pathObj.main
+            if modulePath
+                rfile = @readFile modulePath, file
                 if isLoader
                     rpath      = rfile.path
                     loaderRefs = @loaders[rpath] or @loaders[rpath] = {}
@@ -580,11 +581,11 @@ class Packer
 
 
     getRelModulePath: (base, moduleName) ->
-        ext  = @getExt moduleName, '.js'
-        path = Path.join base, moduleName
-        return {path:file} if @isFile file = path + ext                    # js file found
-        return {path:file} if @isFile file = Path.join path, 'index.js'    # index.js file found
-        return {path:path} if ext and @isFile path                         # asset file found
+        ext  = @testExt moduleName, '.js'
+        path = Path.resolve base, moduleName
+        return file if @isFile file = path + ext                    # js file found
+        return file if @isFile file = Path.join path, 'index.js'    # index.js file found
+        return path if ext and @isFile path                         # asset file found
         null
 
 
@@ -593,16 +594,16 @@ class Packer
         modulePath = Path.join nodePath, moduleName
 
         if @isDir nodePath
-            ext = @getExt moduleName, '.js'
-            return {path:file} if @isFile file = modulePath + ext                           # .js
-            if @isFile file = Path.join modulePath, 'package.json'                          # package.json
-                try
-                    json = require file
-                    main = json?.main
-                catch
-                if main and @isFile file = Path.join modulePath, main    # main
-                    return {path:file, modulePath:modulePath, main:main}
-            return {path:file} if @isFile file = Path.join modulePath, 'index.js'           # index.js
+            ext = @testExt moduleName, '.js'
+            return file if @isFile file = modulePath + ext                                  # .js
+            file = Path.join modulePath, 'package.json'                          # package.json
+            try
+                json = FSU.requireJson file
+                main = json?.main
+            catch
+            if main and @isFile file = Path.join modulePath, main                       # main
+                return file
+            return file if @isFile file = Path.join modulePath, 'index.js'           # index.js
         if base != @cfg.base and base != PROCESS_BASE and base != '/'                       # abort, if outside project root
             return @getNodeModulePath Path.resolve(base, '..'), moduleName                  # try next dir
 
@@ -612,7 +613,7 @@ class Packer
         null
 
 
-    getExt: (name, ext) ->
+    testExt: (name, ext) ->
         return '' if new RegExp(ext + '$').test name
         ext
 
@@ -634,6 +635,37 @@ class Packer
             return FS.statSync path
         catch error
             null
+
+
+
+
+    completed: () =>
+
+        info =
+            errors:       @errors
+            totalModules: @totalModules
+            modules:      []
+            chunks:       []
+
+        for pack, i in @packs by -1
+            info.modules.push
+                modules: pack.numModules
+                path:    pack.file.path
+                out:     pack.out
+
+        for chunk, i in @chunks
+            info.chunks.push
+                modules: chunk.index
+                path:    chunk.file.path
+                out:     pack.out
+
+        if @errors.length
+            console.log 'packer errors: ', @errors
+
+        @ipc.send 'packed', info
+        null
+
+
 
 
     exit: () ->

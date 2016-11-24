@@ -1,5 +1,7 @@
 Chok = require 'chokidar'
 EMap = require 'emap'
+Log  = require './utils/log'
+SW   = require './utils/stopwatch'
 
 
 class Watcher
@@ -14,6 +16,7 @@ class Watcher
             @emap.all()
             @watcher.close()
 
+        SW.start 'watcher'
         @watcher = Chok.watch @cfg.base,
             ignored:       [@wz.ignores]
             ignoreInitial: false
@@ -43,6 +46,7 @@ class Watcher
 
 
     readyHandler: () ->
+        Log.info 'watcher', 'ready', SW.stop 'watcher', 0
         @watching = true
         @wz.walked()
         null

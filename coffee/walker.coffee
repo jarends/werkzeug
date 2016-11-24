@@ -1,11 +1,13 @@
-Walk  = require 'walkdir'
-EMap  = require 'emap'
+Walk = require 'walkdir'
+EMap = require 'emap'
+Log  = require './utils/log'
+SW   = require './utils/stopwatch'
 
 
 options =
-    follow_symlinks: false
+    follow_symlinks: true
     no_recurse:      false
-    max_depth:       undefined
+    max_depth:       50
 
 
 class Walker
@@ -18,11 +20,11 @@ class Walker
 
 
     walk: () ->
-        console.log 'walk'
         if @w
             @w.end()
             @emap.all()
 
+        SW.start 'walker'
         @w = Walk @cfg.base, @options
 
         @emap.map @w, 'path', @pathHandler, @
@@ -40,6 +42,7 @@ class Walker
 
 
     endHandler: () ->
+        Log.info 'walker', 'ready', SW.stop 'walker', 0
         @wz.walked()
         null
 

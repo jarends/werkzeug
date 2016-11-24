@@ -12,12 +12,22 @@ IPC    = require '../utils/ipc'
 Log    = require '../utils/log'
 
 
-#TODO: load project specific tsconfig and put options in .default.tsconfig
+ES5Libs = ['lib.dom.d.ts', 'lib.es5.d.ts', 'lib.scripthost.d.ts']
+ES6Libs = ['lib.dom.d.ts', 'lib.dom.iterable.d.ts', 'lib.es6.d.ts', 'lib.scripthost.d.ts']
 
 
 linterOptions =
     formatter:     'json'
     configuration: {}
+
+
+walkerOptions =
+    follow_symlinks: true
+    no_recurse:      false
+    max_depth:       50
+
+
+#TODO: check tslint code, if the ts language service or the ts program can be used more effectively
 
 
 class TSCompiler
@@ -40,22 +50,18 @@ class TSCompiler
 
 
     init: (@cfg) ->
-        @tslintCfg      = {}
-        @inBase         = PH.getIn  @cfg, 'ts'
-        @outBase        = PH.getOut @cfg, 'ts'
+        @tslintCfg = {}
+        @inBase    = PH.getIn  @cfg, 'ts'
+        @outBase   = PH.getOut @cfg, 'ts'
         @loadTSConfig()
         @loadTSLintConfig()
-
-        #for key of ts
-        #    console.log 'ts: ', key
-
+        @addTypings()
         null
 
 
     loadTSConfig: () ->
         @tscfg = FSU.require __dirname, '..', '..', '.default.tsconfig'
         @tscfg = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
-
 
         tscfg = FSU.require @cfg.base, 'tsconfig'
         if tscfg and tscfg.compilerOptions
@@ -67,22 +73,6 @@ class TSCompiler
         @tscfg.options.outDir     = @outBase
         @tscfg.options.sourceRoot = Path.relative @outBase, @inBase
         @tscfg.options.baseUrl    = Path.join __dirname, '..', '..', 'node_modules'
-
-        #console.log 'parsed tscfg: ', @tscfg.options
-        @addTypings()
-
-        null
-
-
-    addTypings: () ->
-        # add es6 definitions required by angular2
-        @addPath Path.join __dirname, '../../node_modules/typescript/lib/lib.es6.d.ts'
-
-        # add all definitions from new @types system
-        tpath = Path.join @cfg.base, 'node_modules', '@types'
-        if FSU.isDir tpath
-            Walk.sync tpath, (path, stat) =>
-                @addPath path if stat.isFile() and /\.d\.ts$/.test path
         null
 
 
@@ -99,6 +89,34 @@ class TSCompiler
         null
 
 
+    addTypings: () ->
+        opt  = @tscfg.options
+        libs = opt.lib
+
+        if not libs or libs.length == 0
+            target = @tscfg.options.target
+            libs   = switch target
+                when 1 then ES5Libs
+                when 2 then ES6Libs
+                else []
+
+        libPath = Path.join __dirname, '../../node_modules/typescript/lib'
+        for lib in libs
+            path = Path.join libPath, lib
+            @addPath(path) if FSU.isFile path
+
+        types     = opt.types or []
+        typeRoots = opt.typeRoots or ['node_modules/@types']
+        #TODO: use configuration
+        for path in typeRoots
+            path = Path.resolve @cfg.base, path
+            if FSU.isDir path
+                Walk.sync path, (typePath, stat) =>
+                    if /\.d\.ts$/.test(typePath) and stat.isFile()
+                        @addPath(typePath)
+        null
+
+
 
 
 
@@ -106,8 +124,6 @@ class TSCompiler
 
 
     addPath: (path) ->
-        #return null if /\.d\.ts/.test path
-
         file = @fileMap[path]
         if not file
             @paths.push path
@@ -151,7 +167,7 @@ class TSCompiler
 
     compileAll: (paths) ->
         host = ts.createCompilerHost @tscfg.options
-        #host.resolveModuleNames = @resolveModuleNames
+        host.resolveModuleNames = @resolveModuleNames
 
         @program       = ts.createProgram paths, @tscfg.options, host
         emitResult     = @program.emit()
@@ -177,11 +193,11 @@ class TSCompiler
 
         output         = @service.getEmitOutput path
         allDiagnostics = @service.getSyntacticDiagnostics(path).concat @service.getSemanticDiagnostics(path)
-        hasErrors      = false
+        errors         = count:0
 
         allDiagnostics.forEach (diagnostic) =>
-            hasErrors           = false
             if diagnostic.file
+                ++errors.count
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
                 message             = ts.flattenDiagnosticMessageText diagnostic.messageText, '\n'
                 @addError
@@ -193,7 +209,7 @@ class TSCompiler
             else
                 console.log 'diagnostic without file: ', diagnostic
 
-        if not hasErrors
+        if errors.count == 0
             for file in output.outputFiles
                 FS.writeFileSync file.name, file.text, "utf8"
         null
@@ -233,7 +249,7 @@ class TSCompiler
             getDefaultLibFileName: (options) ->
                 @defaultLibFilePath or @defaultLibFilePath = ts.getDefaultLibFilePath options
 
-            #resolveModuleNames: @resolveModuleNames
+            resolveModuleNames: @resolveModuleNames
 
 
         @service = ts.createLanguageService @servicesHost, ts.createDocumentRegistry()
@@ -247,9 +263,12 @@ class TSCompiler
 
 
     resolveModuleNames: (moduleNames, containingFile) =>
-        moduleNames.map (moduleName) =>
-            result = ts.resolveModuleName moduleName, containingFile, @tscfg.options, {fileExists:@fileExists, readFile:@readFile}
-
+        map = []
+        opt = @tscfg.options
+        api = {fileExists:@fileExists, readFile:@readFile}
+        for moduleName in moduleNames
+            result = ts.resolveModuleName moduleName, containingFile, opt, api
+            #console.log 'resolveModuleNames: ', containingFile, moduleName, result
             #if /emap/.test moduleName
             #    console.log 'result for emap: ', containingFile, moduleNames
 
@@ -257,8 +276,10 @@ class TSCompiler
             #    console.log 'result for tslib: ', result
 
             if result.resolvedModule
-                return result.resolvedModule;
-            undefined
+                map.push result.resolvedModule
+            else
+                map.push undefined
+        map
 
 
 
@@ -286,7 +307,7 @@ class TSCompiler
 
 
     lintFile: (path) ->
-        linter = new Linter(path, @linterMap[path], linterOptions)
+        linter = new Linter(path, @linterMap[path], linterOptions, @program)
         result = linter.lint()
         for data in result.failures
             pos = data.startPosition.lineAndCharacter
@@ -300,27 +321,14 @@ class TSCompiler
 
 
     compiled: () ->
-
         if @errors.length == 0 and (@initialized or not @cfg.tslint.ignoreInitial)
             SW.start 'linter'
             @lint()
-            t = SW.stop 'linter'
-            l = @linterErrors.length
-            if l > 0
-                e = "#{l} #{Log.count l, 'error'}".red
-                Log.info 'tslint', "compiled in #{Log.ftime t} with #{e}"
-            else
-                Log.info 'tslint', "compiled in #{Log.ftime t} #{Log.ok}"
-
-            if @linterErrors.length
-                console.log 'tslint.errors: \n', @linterErrors
+            Log.info 'tslint', 'compiled', SW.stop('linter'), @linterErrors.length, true
 
         @initialized = true
 
-        if @errors.length
-            console.log 'ts.errors: \n', @errors
-
-        @ipc.send 'compiled', 'ts', @errors
+        @ipc.send 'compiled', 'ts', @errors, @linterErrors
         null
 
 

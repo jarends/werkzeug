@@ -10,6 +10,8 @@ class Packer
 
 
     constructor: (@wz) ->
+        @info        = null
+        @errors      = []
         @initialized = false
         @cfg         = @wz.cfg
         @packer      = new IPC(CP.fork(PACKER), @)
@@ -19,7 +21,7 @@ class Packer
 
     pack: (files) ->
         if files and files.length
-            Log.info 'packer', "starting ..."
+            Log.info 'packer', 'starting'.white + ' ...'
             SW.start 'packer'
             if not @initialized
                 @packer.send 'readPackages'
@@ -34,18 +36,15 @@ class Packer
         null
 
 
-    packed: (errors) ->
-        t = SW.stop 'packer'
-        l = errors.length
-
-        if l > 0
-            e = "#{l} #{Log.count l, 'error'}".red
-            Log.info 'packer', "packed in #{Log.ftime t} with #{e}", errors
-        else
-            Log.info 'packer', "packed in #{Log.ftime t} #{Log.ok}"
-
+    packed: (@info) ->
         @initialized = true
-        @errors      = errors
+        @errors      = @info.errors
+        t            = SW.stop 'packer'
+        l            = @errors.length
+        Log.info 'packer', 'ready', t, l
+
+        #console.log 'packer.info: ', @info
+
         @wz.packed()
         null
 

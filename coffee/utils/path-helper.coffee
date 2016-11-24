@@ -46,16 +46,6 @@ class PathHelper
         path
 
 
-    @isInChild: (cfg, type, path) ->
-        inPath = @getIn cfg, type
-        path.indexOf(inPath) == 0
-
-
-    @isOutChild: (cfg, type, path) ->
-        outPath = @getOut cfg, type
-        path.indexOf(outPath) == 0
-
-
     @getIn: (cfg, type) ->
         c = cfg[type]
         p = if c and c.in then c.in else cfg.in

@@ -48,11 +48,14 @@ Log.time = (timeOrId) ->
 Log.ftime = (id) ->
     Log.time(id).black.bgWhite.bold
 
+
 Log.getEmpty = (length) ->
     l = Log.empty.length
     if l < length
         Log.empty += new Array(length - l + 1).join(' ')
     Log.empty.substring 0, length
+
+
 
 
 Log.startTicker = (text) ->
@@ -104,9 +107,20 @@ Log.tick = () ->
 
 
 
-Log.info = (type, text) ->
+Log.info = (type, text, time, numErrors, asWarning) ->
     empty = Log.getEmpty(Log.typeLength - type.length)
-    Log type.cyan + empty + '→ '.cyan + text.white
+    text  = text or ''
+    info  = type.cyan + empty + '→ '.cyan + text.white
+    info += ' in ' + Log.ftime(time) if not isNaN time
+    if not isNaN numErrors
+        if numErrors > 0
+            if not asWarning
+                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'error'}".red
+            else
+                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'warning'}".yellow
+        else
+            info += ' ' + Log.ok
+    Log info
     null
 
 

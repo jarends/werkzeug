@@ -25,9 +25,9 @@ Log      = require('./utils/log').mapLogs()
 
 #TODO: watch current wz config and restart app on change
 
-#TODO: implement reasonable config params
+#TODO: maybe implement globs for config paths (maybe managed by walker/watcher)
 
-#TODO: maybe implement globs for config paths
+#TODO: remember TREESHAKING!!! for the build process (if it ever comes)
 
 
 
@@ -43,7 +43,7 @@ class Werkzeug extends Emitter
     constructor: (base) ->
         super
 
-        Log.info 'werkzeug', 'starting ...'
+        Log.info 'werkzeug', 'starting'.white + ' ...'
         Log.startTicker 'werkzeug starting'
 
         @cfg         = new Config(base)
@@ -101,14 +101,21 @@ class Werkzeug extends Emitter
 
     compile: () ->
         return if not @idle
-        @idle = false
-        if @initialized
-            Log.startTicker 'compiling'
-        else
-            Log.setTicker 'compiling'
-        @compiler.compile()
+        @idle     = false
+        compiling = @compiler.compile()
+        if compiling
+            if @initialized
+                Log.startTicker 'compiling'
+            else
+                Log.setTicker 'compiling'
         @cleanFiles()
         @dirty = false
+
+        if not compiling
+            @idle = true
+            console.log 'nothing to do'
+            if not @watcher.watching
+                @pack()
         null
 
 
@@ -128,23 +135,23 @@ class Werkzeug extends Emitter
 
     packed: () ->
         @idle = true
-        time  = Log.stopTicker()
+        t     = Log.stopTicker()
+        l     = @compiler.errors.length + @packer.errors.length
+        w     = @watcher.watching
 
         if not @initialized
             @initialized = true
-            if @watcher.watching
-                Log.info 'werkzeug', "startup in #{Log.ftime time}"
-            else
-                Log.info 'werkzeug', "single run in #{Log.ftime time}"
-
+            s = if w then "startup" else "single run"
         else if @compiler.files and @compiler.files.length
-            Log.info 'werkzeug', "updated in #{Log.ftime time}"
+            s = "updated"
 
-        if @watcher.watching
+        Log.info 'werkzeug', s, t, l
+
+        if w
             if @dirty
                 @update()
             else if @compiler.files and @compiler.files.length
-                Log.info 'werkzeug', 'start watching ...'
+                Log.info 'werkzeug', 'watching'.white + ' ...'
         else
             @terminate()
         null
@@ -226,7 +233,7 @@ class Werkzeug extends Emitter
 
 
     terminate: () =>
-        console.log '\rterminate'
+        console.log 'terminating ...'
         clearTimeout @updateTimeout
         @compiler.exit()
         @packer.exit()

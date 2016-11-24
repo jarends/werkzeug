@@ -36,8 +36,7 @@ class Server
                 console.log 'server: path not found (serving index.html): ', request.path
                 response.sendFile Path.join(@root, '/index.html')
 
-        #TODO: make the port configurable
-        Portfinder.basePort = 3001
+        Portfinder.basePort = @cfg.server.port
         Portfinder.getPort (error, port) =>
             if not error
                 @port   = port

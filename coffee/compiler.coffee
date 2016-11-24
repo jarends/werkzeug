@@ -17,13 +17,16 @@ class Compiler
 
 
     constructor: (@wz) ->
-        @cfg    = @wz.cfg
-        @ts     = ipc: new IPC(CP.fork(TS),    @), compiled: false
-        @coffee = ipc: new IPC(CP.fork(COFFEE),@), compiled: false
-        @sass   = ipc: new IPC(CP.fork(SASS),  @), compiled: false
-        @less   = ipc: new IPC(CP.fork(LESS),  @), compiled: false
-        @styl   = ipc: new IPC(CP.fork(STYL),  @), compiled: false
-        @assets = ipc: new IPC(CP.fork(ASSET), @), compiled: false
+        @cfg         = @wz.cfg
+        @initialized = false
+        @ts          = ipc: new IPC(CP.fork(TS),    @), compiled: false
+        @coffee      = ipc: new IPC(CP.fork(COFFEE),@), compiled: false
+        @sass        = ipc: new IPC(CP.fork(SASS),  @), compiled: false
+        @less        = ipc: new IPC(CP.fork(LESS),  @), compiled: false
+        @styl        = ipc: new IPC(CP.fork(STYL),  @), compiled: false
+        @assets      = ipc: new IPC(CP.fork(ASSET), @), compiled: false
+        @errors      = []
+        @warnings    = []
 
         @ts.ipc.send     'init', @cfg
         @coffee.ipc.send 'init', @cfg
@@ -63,8 +66,9 @@ class Compiler
         SW.start 'compiler.styl'
         SW.start 'compiler.assets'
 
-        @errors = []
-        @files  = []
+        @errors   = []
+        @warnings = []
+        @files    = []
 
         for file in @wz.files
 
@@ -141,19 +145,21 @@ class Compiler
             @coffee.compiled = true
 
         l = @files.length
-        if l
-            Log.info 'compiler', "starting ... (#{l} #{Log.count l, 'file'})"
-        else
-            @wz.compiled()
 
-        null
+        if l == 0
+            return false
+
+        console.log() if @initialized
+        Log.info 'compiler', 'starting'.white + " ... (#{l} #{Log.count l, 'file'})"
+        true
 
 
 
 
-    compiled: (comp, errors) ->
+    compiled: (comp, errors, warnings) ->
         @[comp].compiled = true
 
+        errors = errors or []
         for error in errors
             @errors.push error
             path        = error.path
@@ -164,23 +170,20 @@ class Compiler
             else
                 #console.log 'error in file, but file not in root: ', path
 
-        t = SW.stop 'compiler.' + comp
-        l = errors.length
-        if l > 0
-            e = "#{l} #{Log.count l, 'error'}".red
-            Log.info comp, "compiled in #{Log.ftime t} with #{e}"
-        else
-            Log.info comp, "compiled in #{Log.ftime t} #{Log.ok}"
+        warnings = warnings or []
+        for warning in warnings
+            @warnings.push warning
+
+        t  = SW.stop 'compiler.' + comp
+        le = errors.length
+        lw = warnings.length
+        Log.info comp, 'compiled', t, le, lw
 
         if @ts.compiled and @coffee.compiled and @sass.compiled and @less.compiled and @styl.compiled and @assets.compiled
+            @initialized = true
             t = SW.stop 'compiler.all'
             l = @errors.length
-            if @errors.length > 0
-                e = "#{l} #{Log.count l, 'error'}".red
-                Log.info 'compiler', "all compiled in #{Log.ftime t} with #{e}"
-            else
-                Log.info 'compiler', "all compiled in #{Log.ftime t} #{Log.ok}"
-
+            Log.info 'compiler', 'ready', t, l
             @wz.compiled()
 
         null
@@ -190,7 +193,10 @@ class Compiler
 
     exit: () ->
         @ts.ipc.exit()
+        @coffee.ipc.exit()
         @sass.ipc.exit()
+        @less.ipc.exit()
+        @styl.ipc.exit()
         @assets.ipc.exit()
         null
 
