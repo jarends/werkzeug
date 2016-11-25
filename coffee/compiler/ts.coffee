@@ -1,6 +1,6 @@
 FS     = require 'fs'
 Path   = require 'path'
-ts     = require 'typescript'
+TS     = require 'typescript'
 Linter = require 'tslint'
 Walk   = require 'walkdir'
 Home   = require 'homedir'
@@ -10,6 +10,7 @@ SW     = require '../utils/stopwatch'
 PH     = require '../utils/path-helper'
 IPC    = require '../utils/ipc'
 Log    = require '../utils/log'
+NGTool = require './ng-tool'
 
 
 ES5Libs = ['lib.dom.d.ts', 'lib.es5.d.ts', 'lib.scripthost.d.ts']
@@ -21,13 +22,11 @@ linterOptions =
     configuration: {}
 
 
-walkerOptions =
-    follow_symlinks: true
-    no_recurse:      false
-    max_depth:       50
 
 
 #TODO: check tslint code, if the ts language service or the ts program can be used more effectively
+
+
 
 
 class TSCompiler
@@ -45,6 +44,8 @@ class TSCompiler
         @program       = null
         @sprogram      = null
         @ipc           = new IPC(process, @)
+        @sources       = {}
+        TS.sys.readFile = @readFile
 
 
 
@@ -61,11 +62,11 @@ class TSCompiler
 
     loadTSConfig: () ->
         @tscfg = FSU.require __dirname, '..', '..', '.default.tsconfig'
-        @tscfg = ts.convertCompilerOptionsFromJson @tscfg.compilerOptions
+        @tscfg = TS.convertCompilerOptionsFromJson @tscfg.compilerOptions
 
         tscfg = FSU.require @cfg.base, 'tsconfig'
         if tscfg and tscfg.compilerOptions
-            tscfg  = ts.convertCompilerOptionsFromJson tscfg.compilerOptions
+            tscfg  = TS.convertCompilerOptionsFromJson tscfg.compilerOptions
             @tscfg = _.deepExtend @tscfg, tscfg
 
         @tscfg.options.sourceMap  = true
@@ -130,6 +131,11 @@ class TSCompiler
             @fileMap[path] = version:0, path:path
         else
             ++file.version
+
+        src = FS.readFileSync path, 'utf8'
+        if @cfg.ts.ngTool
+            src = NGTool.run path, src, @cfg
+        @sources[path] = src
         null
 
 
@@ -142,41 +148,43 @@ class TSCompiler
 
 
     compile: (files) ->
-        @files = []
-        for file in files
-            path = file.path
-            if not file.removed
-                @addPath path # updates version, if already added
-                @files.push @fileMap[path]
-            else
-                @removePath path
-
-        @errors = []
-        @createService() if not @service
-
-        if not @initialized or files.length > 20
-            @compileAll @paths
-        else
-            @program = @service.getProgram()
+        try
+            @files = []
             for file in files
-                @compilePath(file.path) if not file.removed
+                path = file.path
+                if not file.removed
+                    @addPath path # updates version, if already added
+                    @files.push @fileMap[path]
+                else
+                    @removePath path
 
-        @compiled()
+            @errors = []
+            @createService() if not @service
+
+            if not @initialized or files.length > 20
+                @compileAll @paths
+            else
+                @program = @service.getProgram()
+                for file in files
+                    @compilePath(file.path) if not file.removed
+
+            @compiled()
+        catch e
+            console.log 'ts error: ', e.toString()
         null
 
 
     compileAll: (paths) ->
-        host = ts.createCompilerHost @tscfg.options
-        host.resolveModuleNames = @resolveModuleNames
+        @createProgram(paths)
 
-        @program       = ts.createProgram paths, @tscfg.options, host
+        @program       = @progAll
         emitResult     = @program.emit()
-        allDiagnostics = ts.getPreEmitDiagnostics(@program).concat emitResult.diagnostics
+        allDiagnostics = TS.getPreEmitDiagnostics(@program).concat emitResult.diagnostics
 
         allDiagnostics.forEach (diagnostic) =>
             if diagnostic.file
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
-                message             = ts.flattenDiagnosticMessageText diagnostic.messageText, '\n'
+                message             = TS.flattenDiagnosticMessageText diagnostic.messageText, '\n'
                 @addError
                     path: diagnostic.file.fileName
                     line: line + 1
@@ -199,7 +207,7 @@ class TSCompiler
             if diagnostic.file
                 ++errors.count
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
-                message             = ts.flattenDiagnosticMessageText diagnostic.messageText, '\n'
+                message             = TS.flattenDiagnosticMessageText diagnostic.messageText, '\n'
                 @addError
                     path: diagnostic.file.fileName
                     line: line + 1
@@ -226,6 +234,15 @@ class TSCompiler
 
 
 
+    createProgram: (paths) ->
+        host = TS.createCompilerHost @tscfg.options
+        host.resolveModuleNames = @resolveModuleNames
+        @progAll = TS.createProgram paths, @tscfg.options, host
+        null
+
+
+
+
     createService: () ->
         @servicesHost =
             getScriptFileNames: () =>
@@ -236,7 +253,7 @@ class TSCompiler
 
             getScriptSnapshot: (path) =>
                 try
-                    ts.ScriptSnapshot.fromString FS.readFileSync(path, 'utf8')
+                    TS.ScriptSnapshot.fromString @readFile(path)
                 catch
                     undefined
 
@@ -247,19 +264,23 @@ class TSCompiler
                 @tscfg.options
 
             getDefaultLibFileName: (options) ->
-                @defaultLibFilePath or @defaultLibFilePath = ts.getDefaultLibFilePath options
+                @defaultLibFilePath or @defaultLibFilePath = TS.getDefaultLibFilePath options
 
             resolveModuleNames: @resolveModuleNames
 
 
-        @service = ts.createLanguageService @servicesHost, ts.createDocumentRegistry()
+        @service = TS.createLanguageService @servicesHost, TS.createDocumentRegistry()
         null
 
 
+    fileExists: (path) ->
+        TS.sys.fileExists path
 
 
-    fileExists: (path) -> ts.sys.fileExists path
-    readFile:   (path) -> ts.sys.readFile path
+    readFile:   (path) =>
+        src = @sources[path]
+        return src if src
+        @sources[path] = FS.readFileSync path, 'utf8'
 
 
     resolveModuleNames: (moduleNames, containingFile) =>
@@ -267,13 +288,7 @@ class TSCompiler
         opt = @tscfg.options
         api = {fileExists:@fileExists, readFile:@readFile}
         for moduleName in moduleNames
-            result = ts.resolveModuleName moduleName, containingFile, opt, api
-            #console.log 'resolveModuleNames: ', containingFile, moduleName, result
-            #if /emap/.test moduleName
-            #    console.log 'result for emap: ', containingFile, moduleNames
-
-            #if /tslib/.test moduleName
-            #    console.log 'result for tslib: ', result
+            result = TS.resolveModuleName moduleName, containingFile, opt, api
 
             if result.resolvedModule
                 map.push result.resolvedModule
@@ -327,6 +342,8 @@ class TSCompiler
             Log.info 'tslint', 'compiled', SW.stop('linter'), @linterErrors.length, true
 
         @initialized = true
+
+        #console.log 'ts errors: \n', @errors
 
         @ipc.send 'compiled', 'ts', @errors, @linterErrors
         null

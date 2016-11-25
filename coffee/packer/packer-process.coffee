@@ -116,39 +116,37 @@ class Packer
 
 
     update: (files) ->
-        errors  = @errors
-        @errors = []
-        updated = {}
-        for f in files
-            path = PH.outFromIn @cfg, 'packer', f.path, true
-            file = @fileMap[path]
+        try
+            errors  = @errors
+            @errors = []
+            updated = {}
+            for f in files
+                path = PH.outFromIn @cfg, 'packer', f.path, true
+                file = @fileMap[path]
 
 
 
-            continue if not file or updated[path]
-            updated[path] = true
-            if file.removed
-                @remove file
-            else
-                @clear    file
+                continue if not file or updated[path]
+                updated[path] = true
+                @clear file
+                if not file.removed
+                    @readFile path
+
+            for error in errors
+                path = error.path
+                file = @fileMap[path]
+                continue if not file or updated[path]
+                updated[path] = true
+                @clear file
                 @readFile path
 
-        for error in errors
-            path = error.path
-            file = @fileMap[path]
-            continue if not file or updated[path]
-            updated[path] = true
-            @clear file
-            @readFile path
-
-        if @openFiles == 0
-            @completed()
+            if @openFiles == 0
+                @completed()
+        catch e
+            console.log 'packer error: ', e.toString()
         null
 
 
-    remove: (file) ->
-        @clear file
-        null
 
 
     clear: (file) ->
@@ -163,8 +161,8 @@ class Packer
             if loaderRefs
                 delete loaderRefs[path]
                 if not Dict.hasKeys loaderRefs
-                    delete @loaders[lpath]
-            delete file.reqAsL[lpath]
+                    delete @loaders[loderPath]
+            delete file.reqAsL[loderPath]
 
         delete @fileMap[path]
         @indexer.remove path, file.index
@@ -540,7 +538,7 @@ class Packer
         #regex  = /^([^\/]|(\/(?!\/)))*?require\s*\(\s*('|")(.*?)('|")\s*\)/gm
         regex  = /require\s*\(\s*('|")(.*?)('|")\s*\)/gm
         regPos = 2
-        loaderRegex = new RegExp(@cfg.packer.loaderPrefix)
+        loaderRegex = new RegExp('^' + @cfg.packer.loaderPrefix)
 
         #while result = regex.exec file.source
         file.source = file.source.replace regex, (args...) =>

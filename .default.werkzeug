@@ -14,7 +14,8 @@
         "enabled": true
     },
     "ts": {
-        "enabled": true
+        "enabled": true,
+        "ngTool": true
     },
     "sass": {
         "enabled": true
@@ -37,7 +38,7 @@
         "nga": false,
         "bigChunks": true,
         "chunks": "./chunk_",
-        "loaderPrefix": "^es6-promise\\!",
+        "loaderPrefix": "es6-promise!",
         "packages": []
     }
 }

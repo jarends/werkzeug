@@ -50,4 +50,9 @@ class Server
         null
 
 
+    exit: ->
+        process.exit 0
+
+
+
 module.exports = new Server()
