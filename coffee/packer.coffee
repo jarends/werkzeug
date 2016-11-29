@@ -42,10 +42,11 @@ class Packer
         t            = SW.stop 'packer'
         l            = @errors.length
         Log.info 'packer', 'ready', t, l
-
-        #console.log 'packer.info: ', @info
-
         @wz.packed()
+        null
+
+
+    logErrors: () ->
         null
 
 

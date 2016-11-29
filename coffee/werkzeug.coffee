@@ -108,12 +108,12 @@ class Werkzeug extends Emitter
                 Log.startTicker 'compiling'
             else
                 Log.setTicker 'compiling'
+
         @cleanFiles()
         @dirty = false
 
         if not compiling
             @idle = true
-            console.log 'nothing to do'
             if not @watcher.watching
                 @pack()
         null
@@ -121,7 +121,10 @@ class Werkzeug extends Emitter
 
     compiled: () ->
         @idle = true
-        @pack()
+        if not @compiler.errors.length
+            @pack()
+        else
+            @packed()
         null
 
 
@@ -129,29 +132,45 @@ class Werkzeug extends Emitter
         return if not @idle
         @idle = false
         Log.setTicker 'packing'
-        @packer.pack(@compiler.files)
+        @packer.pack @compiler.files
         null
 
 
     packed: () ->
         @idle = true
         t     = Log.stopTicker()
-        l     = @compiler.errors.length + @packer.errors.length
+        e     = @compiler.errors.concat @packer.errors
+        el    = e.length
+        wl    = @compiler.warnings.length
         w     = @watcher.watching
+
+        @compiler.logErrors()
+        @packer.logErrors()
+
+        if el + wl
+            console.log ''
 
         if not @initialized
             @initialized = true
             s = if w then "startup" else "single run"
+
         else if @compiler.files and @compiler.files.length
             s = "updated"
 
-        Log.info 'werkzeug', s, t, l
+        Log.info('werkzeug', s, t, el) if s
 
         if w
             if @dirty
                 @update()
             else if @compiler.files and @compiler.files.length
-                Log.info 'werkzeug', 'watching'.white + ' ...'
+                now = new Date()
+                h   = now.getHours()
+                m   = now.getMinutes()
+                s   = now.getSeconds()
+                h   = '0' + h if h < 10
+                m   = '0' + m if m < 10
+                s   = '0' + s if s < 10
+                Log.info 'werkzeug', 'watching'.white + ' ... (' + h + ':' + m + ':' + s + ')'
         else
             @terminate()
         null

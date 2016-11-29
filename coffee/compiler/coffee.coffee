@@ -40,9 +40,7 @@ class CoffeeCompiler
             if error
                 @errors.push
                     path: path
-                    line: 0
-                    col:  0
-                    text: 'file read error'
+                    error: 'file read error'
             else
 
                 outPath = PH.outFromIn @cfg, 'coffee', path, true
@@ -59,11 +57,14 @@ class CoffeeCompiler
                 catch error
 
                 if error
+                    text = /error: (.*?)(\r\n|\n)/.exec(error.toString())
+                    text = text[1] if text
+                    text = text or error.toString()
                     @errors.push
-                        path: error.filename
-                        line: error.location.first_line   + 1
-                        col:  error.location.first_column + 1
-                        text: error.toString()
+                        path:  error.filename
+                        line:  error.location.first_line   + 1
+                        col:   error.location.first_column + 1
+                        error: text
                 else
                     jsSrc   = result.js
                     mapSrc  = result.v3SourceMap

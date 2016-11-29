@@ -38,10 +38,8 @@ class LessCompiler
         FS.readFile path, 'utf8', (error, source) =>
             if error
                 @errors.push
-                    path: path
-                    line: 0
-                    col:  0
-                    text: 'file read error'
+                    path:  path
+                    error: 'file read error'
             else
                 outPath = PH.outFromIn @cfg, 'less', path, true
                 mapPath = outPath + '.map'
@@ -59,10 +57,10 @@ class LessCompiler
                     ++@openFiles
                     if error
                         @errors.push
-                            path: error.filename
-                            line: error.line
-                            col:  error.column + 1
-                            text: error.message
+                            path:  error.filename
+                            line:  error.line
+                            col:   error.column + 1
+                            error: error.message
                     else
                         cssSrc = result.css
                         mapSrc = result.map
@@ -81,10 +79,6 @@ class LessCompiler
 
 
     compiled: () ->
-
-        if @errors.length
-            console.log 'less errors: ', @errors
-
         @initialized = true
         @ipc.send 'compiled', 'less', @errors
 

@@ -186,10 +186,10 @@ class TSCompiler
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
                 message             = TS.flattenDiagnosticMessageText diagnostic.messageText, '\n'
                 @addError
-                    path: diagnostic.file.fileName
-                    line: line + 1
-                    col:  character + 1
-                    text: message
+                    path:  diagnostic.file.fileName
+                    line:  line + 1
+                    col:   character + 1
+                    error: message
             #TODO: handle error somehow
             else
                 console.log 'diagnostic without file: ', diagnostic
@@ -209,10 +209,10 @@ class TSCompiler
                 { line, character } = diagnostic.file.getLineAndCharacterOfPosition diagnostic.start
                 message             = TS.flattenDiagnosticMessageText diagnostic.messageText, '\n'
                 @addError
-                    path: diagnostic.file.fileName
-                    line: line + 1
-                    col:  character + 1
-                    text: message
+                    path:  diagnostic.file.fileName
+                    line:  line + 1
+                    col:   character + 1
+                    error: message
             #TODO: handle error somehow
             else
                 console.log 'diagnostic without file: ', diagnostic
@@ -302,22 +302,26 @@ class TSCompiler
     lint: () ->
         #remove errors for changed files
         errors = []
-        map    = {}
+        fmap   = {}
+        emap   = {}
 
         for file in @files
-            map[file.path] = true
+            fmap[file.path] = true
+
+        for error in @errors
+            emap[error.path] = true
 
         for error in @linterErrors
-            errors.push error if not map[error.path]
+            errors.push error if not fmap[error.path] and not emap[error.path]
 
         @linterErrors = errors
 
         for file in @files
-            path             = file.path
-            file             = @program.getSourceFile path
-            @linterMap[path] = file.text
-            @lintFile path
-
+            path = file.path
+            if not emap[path]
+                file             = @program.getSourceFile path
+                @linterMap[path] = file.text
+                @lintFile path
         null
 
 
@@ -327,25 +331,23 @@ class TSCompiler
         for data in result.failures
             pos = data.startPosition.lineAndCharacter
             @linterErrors.push
-                path: path
-                line: pos.line + 1
-                col:  pos.character + 1
-                text: data.failure
+                path:    path
+                line:    pos.line + 1
+                col:     pos.character + 1
+                warning: data.failure
+                type:    'tslint'
 
 
 
 
     compiled: () ->
-        if @errors.length == 0 and (@initialized or not @cfg.tslint.ignoreInitial)
+        if (@initialized or not @cfg.tslint.ignoreInitial)
             SW.start 'linter'
             @lint()
             Log.info 'tslint', 'compiled', SW.stop('linter'), @linterErrors.length, true
 
         @initialized = true
-
-        #console.log 'ts errors: \n', @errors
-
-        @ipc.send 'compiled', 'ts', @errors, @linterErrors
+        @ipc.send 'compiled', 'ts', @errors.concat(@linterErrors)
         null
 
 

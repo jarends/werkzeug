@@ -12,7 +12,7 @@ Log    = require '../utils/log'
 
 
 
-class LessCompiler
+class StylusCompiler
 
 
     constructor: () ->
@@ -41,10 +41,8 @@ class LessCompiler
         FS.readFile path, 'utf8', (error, source) =>
             if error
                 @errors.push
-                    path: path
-                    line: 0
-                    col:  0
-                    text: 'file read error'
+                    path:  path
+                    error: 'file read error'
             else
                 outPath = PH.outFromIn @cfg, 'styl', path, true
                 mapPath = outPath + '.map'
@@ -62,12 +60,11 @@ class LessCompiler
                 style.render (error, cssSrc) =>
                     ++@openFiles
                     if error
-                        console.log 'styl.error:\n', error
                         @errors.push
-                            path: path
-                            line: error.lineno
-                            col:  error.column + 1
-                            text: error.text
+                            path:  path
+                            line:  error.lineno
+                            col:   error.column + 1
+                            error: error.text
                     else
                         mapSrc = style.sourcemap
                         if mapSrc
@@ -86,12 +83,8 @@ class LessCompiler
 
 
     compiled: () ->
-
-        if @errors.length
-            console.log 'stylus errors: ', @errors
-
         @initialized = true
         @ipc.send 'compiled', 'styl', @errors
 
 
-module.exports = new LessCompiler()
+module.exports = new StylusCompiler()

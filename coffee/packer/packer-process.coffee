@@ -124,12 +124,10 @@ class Packer
                 path = PH.outFromIn @cfg, 'packer', f.path, true
                 file = @fileMap[path]
 
-
-
                 continue if not file or updated[path]
                 updated[path] = true
                 @clear file
-                if not file.removed
+                if not f.removed
                     @readFile path
 
             for error in errors
@@ -175,7 +173,17 @@ class Packer
 
 
 
+    removeSources: (path) ->
+        FS.unlinkSync path
+        FS.unlinkSync path + '.map'
+
+
     writePackages: () ->
+        # remove current packs and chunks
+        @removeSources(pack.out)  for pack  in @packs  if @packs
+        @removeSources(chunk.out) for chunk in @chunks if @chunks
+
+
         @totalModules = 0
         @packed       = {}
         @loaded       = {}
@@ -638,7 +646,6 @@ class Packer
 
 
     completed: () =>
-
         info =
             errors:       @errors
             totalModules: @totalModules
@@ -656,9 +663,6 @@ class Packer
                 modules: chunk.index
                 path:    chunk.file.path
                 out:     pack.out
-
-        if @errors.length
-            console.log 'packer errors: ', @errors
 
         @ipc.send 'packed', info
         null

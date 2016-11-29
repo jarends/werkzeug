@@ -47,10 +47,10 @@ class SassCompiler
     onResult: (error, result) =>
         if error
             @errors.push
-                path: error.file
-                line: error.line
-                col:  error.column
-                text: error.message
+                path:  error.file
+                line:  error.line
+                col:   error.column
+                error: error.message
         else
             path = result.stats.entry
             out  = PH.outFromIn @cfg, 'sass', path, true
