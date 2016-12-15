@@ -85,6 +85,10 @@ class Packer
 
 
     constructor: () ->
+        @create()
+
+
+    create: () ->
         @indexer    = new Indexer()
         @fileMap    = {}    # indexing: files mapped by path in tmp or node_modules
         @nodes      = {}    # indexing: currently unused
@@ -97,6 +101,7 @@ class Packer
         @chunks     = null  # packaging: list of current chunks
         @ipc        = new IPC(process, @)
         @errors     = []
+        null
 
 
     init: (@cfg) ->
@@ -108,7 +113,7 @@ class Packer
 
     readPackages: () ->
         @errors  = []
-        packages = @cfg.packer?.packages or []
+        packages = @cfg.packer.packages or []
         for cfg in packages
             path = Path.join @out, cfg.in
             @readFile path
@@ -260,10 +265,10 @@ class Packer
             rfile = @fileMap[rpath]
             if not rfile
                 @errors.push
-                    path: file.path
-                    line: -1
-                    col:  -1
-                    text: 'required file not found: ' + rpath
+                    path:  file.path
+                    line:  -1
+                    col:   -1
+                    error: 'required file not found: ' + rpath
             else if not @packed[rfile.index]
                 # add all loaders to the pack -> used by cleanupChunks
                 for lpath of rfile.reqAsL
@@ -280,10 +285,10 @@ class Packer
             rfile = @fileMap[rpath]
             if not rfile
                 @errors.push
-                    path: file.path
-                    line: -1
-                    col:  -1
-                    text: 'required file not found: ' + rpath
+                    path:  file.path
+                    line:  -1
+                    col:   -1
+                    error: 'required file not found: ' + rpath
             else
                 @gatherChunks(loader, rfile) if not loader.parts[rpath]
         null
@@ -481,17 +486,17 @@ class Packer
             if error
                 file.error = error
                 @errors.push
-                    path: path
-                    line: 0
-                    col:  0
-                    text: 'file read error'
+                    path:  path
+                    line:  -1
+                    col:   -1
+                    error: 'file read error'
             else
                 #TODO: babel should be a compiler
                 # use babel if file is in node-modules and isn't an umd module and has an import statement
-                if /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const )/gm.test(source)
+                if /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
                     result = Babel.transform source, babelOptions
                     source = result.code
-                #console.log 'babel transformed: ' + path
+                    #console.log 'babel transformed: ' + path
 
                 # handle source map
                 if PH.testJS(path)
@@ -576,10 +581,10 @@ class Packer
                 return "require(#{rfile.index})"
             else
                 @errors.push
-                    path: path
-                    line: 0
-                    col:  0
-                    text: 'packer.parseFile: module "' + name + '" not found'
+                    path:  path
+                    line:  -1
+                    col:   -1
+                    error: 'packer.parseFile: module "' + name + '" not found'
 
             args[0]
         null
@@ -589,9 +594,9 @@ class Packer
     getRelModulePath: (base, moduleName) ->
         ext  = @testExt moduleName, '.js'
         path = Path.resolve base, moduleName
-        return file if @isFile file = path + ext                    # js file found
-        return file if @isFile file = Path.join path, 'index.js'    # index.js file found
-        return path if ext and @isFile path                         # asset file found
+        return file if @isFile file = path + ext                                  # js file found
+        return file if @isFile file = Path.join path, 'index.js'                  # index.js file found
+        return path if ext and @isFile path                                       # asset file found
         null
 
 
@@ -601,17 +606,19 @@ class Packer
 
         if @isDir nodePath
             ext = @testExt moduleName, '.js'
-            return file if @isFile file = modulePath + ext                                  # .js
-            file = Path.join modulePath, 'package.json'                          # package.json
+            return file if @isFile file = modulePath + ext                        # .js
+            file = Path.join modulePath, 'package.json'                           # package.json
             try
                 json = FSU.requireJson file
                 main = json?.main
             catch
-            if main and @isFile file = Path.join modulePath, main                       # main
-                return file
-            return file if @isFile file = Path.join modulePath, 'index.js'           # index.js
-        if base != @cfg.base and base != PROCESS_BASE and base != '/'                       # abort, if outside project root
-            return @getNodeModulePath Path.resolve(base, '..'), moduleName                  # try next dir
+            if main
+                ext = @testExt main, '.js'
+                if @isFile file = Path.join modulePath, main + ext                # main
+                    return file
+            return file if @isFile file = Path.join modulePath, 'index.js'        # index.js
+        if base != @cfg.base and base != PROCESS_BASE and base != '/'             # abort, if outside project root
+            return @getNodeModulePath Path.resolve(base, '..'), moduleName        # try next dir
 
         # try modules shipped with werkzeug
         if base != PROCESS_BASE

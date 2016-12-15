@@ -49,7 +49,7 @@ class IPC extends Emitter
     messageHandler: (message) ->
         type = message?.type
         return null if not type
-        args = message.args || []
+        args = message.args or []
         return null if not _.isArray args
 
         if type == 'ipc.log'

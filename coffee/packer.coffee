@@ -20,8 +20,9 @@ class Packer
 
 
     pack: (files) ->
-        if files and files.length
-            Log.info 'packer', 'starting'.white + ' ...'
+        packs = @cfg.packer.packages
+        if files and files.length and packs and packs.length
+            Log.info 'packer', 'starting ...'
             SW.start 'packer'
             if not @initialized
                 @packer.send 'readPackages'
@@ -32,21 +33,26 @@ class Packer
         null
 
 
-    packFiles: () ->
-        null
-
-
     packed: (@info) ->
         @initialized = true
         @errors      = @info.errors
         t            = SW.stop 'packer'
         l            = @errors.length
         Log.info 'packer', 'ready', t, l
+
         @wz.packed()
         null
 
 
     logErrors: () ->
+        try
+            base = @cfg.base
+            if @errors.length
+                for error in @errors
+                    error.type = 'packer'
+                Log.error @errors, base
+        catch e
+            console.log 'packing error: ', e.toString()
         null
 
 

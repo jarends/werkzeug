@@ -13,11 +13,22 @@ PH       = require './utils/path-helper'
 Log      = require('./utils/log').mapLogs()
 
 
-#TODO: set ts.noEmitOnError = true and merge packer errors back to compiler errors!!!
+#TODO: add multiple in and out paths!!!
+#TODO: refactor path-helper somehow in cfg!!!
 
-#TODO: make sourcemaps optional
+#TODO: add post processors (like tslint or autoprefixer)!!!
 
-#TODO: implement salter!!!
+#TODO: fix errors for empty project!!!
+
+#TODO: refactor error handling -> use info object???
+
+#TODO: fix errors for multiple instances in the same project
+
+#TODO: cleanup log code
+
+#TODO: set ts.noEmitOnError = true and merge packer errors back to compiler errors???
+
+#TODO: make sourcemaps optional!!!
 
 #TODO: enable cli flag for different configs, maybe run configs concurrently
 # .wz.prod -> wz prod
@@ -25,9 +36,9 @@ Log      = require('./utils/log').mapLogs()
 
 #TODO: watch current wz config and restart app on change
 
-#TODO: maybe implement globs for config paths (maybe managed by walker/watcher)
+#TODO: remember TREESHAKING for the build process (if it ever comes)???
 
-#TODO: remember TREESHAKING!!! for the build process (if it ever comes)
+#TODO: implement salter???
 
 
 
@@ -40,19 +51,20 @@ class Werkzeug extends Emitter
     @updateDelay = 500
 
 
-    constructor: (base) ->
+    constructor: (base, cfg) ->
         super
 
-        Log.info 'werkzeug', 'starting'.white + ' ...'
+        Log()
+        Log.info 'werkzeug', 'starting ...'
         Log.startTicker 'werkzeug starting'
 
-        @cfg         = new Config(base)
-        @server      = new Server  (@)
+        @cfg         = new Config(base, cfg)
         @walker      = new Walker  (@)
         @watcher     = new Watcher (@)
         @compiler    = new Compiler(@)
-        @packer      = new Packer  (@)
-        @builder     = new Builder (@)
+        @packer      = new Packer  (@) if @cfg.packer.enabled and @cfg.out
+        @server      = new Server  (@) if @cfg.server.enabled and @cfg.out
+        @builder     = new Builder (@) if @cfg.builder.enabled
         @errors      = []
         @files       = []
         @fileMap     = {}
@@ -79,9 +91,9 @@ class Werkzeug extends Emitter
 
 
     watch: () ->
-        return if not @idle || @watcher.watching
+        return if not @idle or @watcher.watching
         #TODO: make server optional
-        @server.init()
+        @server.init() if @server
         @watcher.watch()
         null
 
@@ -116,6 +128,8 @@ class Werkzeug extends Emitter
             @idle = true
             if not @watcher.watching
                 @pack()
+            else if not @initialized
+                @packed()
         null
 
 
@@ -131,21 +145,24 @@ class Werkzeug extends Emitter
     pack: () ->
         return if not @idle
         @idle = false
-        Log.setTicker 'packing'
-        @packer.pack @compiler.files
+        if @packer
+            Log.setTicker 'packing'
+            @packer.pack @compiler.files
+        else
+            @packed()
         null
 
 
     packed: () ->
         @idle = true
         t     = Log.stopTicker()
-        e     = @compiler.errors.concat @packer.errors
+        e     = @compiler.errors.concat (@packer?.errors or [])
         el    = e.length
         wl    = @compiler.warnings.length
         w     = @watcher.watching
 
         @compiler.logErrors()
-        @packer.logErrors()
+        @packer.logErrors() if @packer
 
         if el + wl
             console.log ''
@@ -155,7 +172,7 @@ class Werkzeug extends Emitter
             s = if w then "startup" else "single run"
 
         else if @compiler.files and @compiler.files.length
-            s = "updated"
+            s = "ready"
 
         Log.info('werkzeug', s, t, el) if s
 
@@ -170,7 +187,7 @@ class Werkzeug extends Emitter
                 h   = '0' + h if h < 10
                 m   = '0' + m if m < 10
                 s   = '0' + s if s < 10
-                Log.info 'werkzeug', 'watching'.white + ' ... (' + h + ':' + m + ':' + s + ')'
+                Log.info 'werkzeug', 'watching' + ' ... ' + (h + ':' + m + ':' + s + ' - ' + @cfg.base)
         else
             @terminate()
         null
@@ -218,11 +235,11 @@ class Werkzeug extends Emitter
         file.dirty  = true
         file.errors = null
         @update()
+        #console.log 'fileAdded: ', path
         null
 
 
     fileChanged: (path) ->
-
         file = @fileMap[path]
         return if not file
 
@@ -230,6 +247,7 @@ class Werkzeug extends Emitter
         file.dirty   = true
         file.errors  = null
         @update()
+        #console.log 'fileChanged: ', path
         null
 
 
@@ -240,6 +258,7 @@ class Werkzeug extends Emitter
         file.removed = Date.now()
         file.dirty   = true
         @update()
+        #console.log 'fileRemoved: ', path
         null
 
 
@@ -252,11 +271,11 @@ class Werkzeug extends Emitter
 
 
     terminate: () =>
-        console.log 'terminating ...'
+        Log()
         clearTimeout @updateTimeout
         @compiler.exit()
-        @packer.exit()
-        @server.exit()
+        @packer.exit() if @packer
+        @server.exit() if @server
         process.removeAllListeners()
         setTimeout () -> process.exit 0
         null

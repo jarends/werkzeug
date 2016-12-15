@@ -1,4 +1,4 @@
-# stylus hack to get correct error informations without parsing the message
+# stylus hack to get error informations without parsing the message
 StylusUtils         = require 'stylus/lib/utils'
 formatExceptionHack = StylusUtils.formatException
 StylusUtils.formatException = (err, options) ->

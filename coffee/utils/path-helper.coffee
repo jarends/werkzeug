@@ -74,10 +74,13 @@ class PathHelper
 
     @getPaths: (cfg) ->
         base     = cfg.base
-        outPaths = [Path.join base, cfg.out]
+        outPaths = []
+        out      = cfg.out
+        if out and out != cfg.in
+            outPaths.push Path.join base, out
         for type of cfg
-            out = cfg[type].out
-            if out
+            out = cfg[type]?.out
+            if out and out != cfg[type].in
                 out = Path.join base, out
                 outPaths.push(out) if outPaths.indexOf(out) == -1
         outPaths

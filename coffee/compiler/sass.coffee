@@ -20,13 +20,24 @@ class SassCompiler
 
 
     init: (@cfg) ->
+        @inPath  = PH.getIn  @cfg, 'sass'
+        @outPath = PH.getOut @cfg, 'sass'
         null
 
 
     compile: (files) ->
-        @errors = []
+        @errors  = []
+        compiled = {}
         for file in files
+            compiled[file.path] = true
             @compileFile file
+
+        globals = @cfg.sass.globals or []
+        for path in globals
+            path = Path.join @inPath, path
+            @compileFile(path:path) if not compiled[path]
+
+        @compiled() if @openFiles == 0
         null
 
 
@@ -47,7 +58,7 @@ class SassCompiler
     onResult: (error, result) =>
         if error
             @errors.push
-                path:  error.file
+                path:  error.file or result?.stats?.entry or 'file missing'
                 line:  error.line
                 col:   error.column
                 error: error.message

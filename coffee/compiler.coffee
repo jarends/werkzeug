@@ -33,10 +33,12 @@ class CompilerClient
         @warnings = []
         @compiled = false
         SW.start 'compiler.' + @type
+        null
 
 
     add: (file) ->
         @files.push file
+        null
 
 
     compile: () ->
@@ -44,6 +46,12 @@ class CompilerClient
             @ipc.send 'compile', @files
         else
             @compiled = true
+        null
+
+
+    exit: () ->
+        @ipc.exit()
+        null
 
 
 
@@ -59,12 +67,15 @@ class Compiler
         @warnings    = []
 
         for type in CLIENTS
-            client  = new CompilerClient(type, @)
-            @[type] = client
-            @clients.push client
+            if @isEnabled(type)
+                client  = new CompilerClient(type, @)
+                @[type] = client
+                @clients.push client
         null
 
 
+    isEnabled: (type) ->
+        @cfg[type].enabled
 
 
     compile: () ->
@@ -86,28 +97,28 @@ class Compiler
 
                 # add removed files also to update ts file map
                 # allow d.ts files from everywhere #TODO: maybe change this
-                if PH.testTS(path) and (path.indexOf(@ts.root) == 0 or /\.d\.ts/.test path)
+                if @isEnabled('ts') and PH.testTS(path) and (path.indexOf(@ts.root) == 0 or /\.d\.ts/.test path)
                     @ts.add f
                     used = true
 
-                else if PH.testCoffee(path) and not removed and path.indexOf(@coffee.root) == 0
+                else if @isEnabled('coffee') and PH.testCoffee(path) and not removed and path.indexOf(@coffee.root) == 0
                     @coffee.add f
                     used = true
 
-                else if PH.testSass(path) and not removed and path.indexOf(@sass.root) == 0
+                else if @isEnabled('sass') and PH.testSass(path) and not removed and path.indexOf(@sass.root) == 0
                     @sass.add f
                     used = true
 
-                else if PH.testLess(path) and not removed and path.indexOf(@less.root) == 0
+                else if @isEnabled('less') and PH.testLess(path) and not removed and path.indexOf(@less.root) == 0
                     @less.add f
                     used = true
 
-                else if PH.testStyl(path) and not removed and path.indexOf(@styl.root) == 0
+                else if @isEnabled('styl') and PH.testStyl(path) and not removed and path.indexOf(@styl.root) == 0
                     @styl.add f
                     used = true
 
                 # ignore removed files in this else -> all removed files will be added separate
-                else if path.indexOf(@assets.root) == 0 and not removed
+                else if @isEnabled('assets') and path.indexOf(@assets.root) == 0 and not removed
                     @assets.add f
                     used = true
 
@@ -124,7 +135,8 @@ class Compiler
         l = @files.length
         if l
             console.log() if @initialized
-            Log.info 'compiler', 'starting'.white + " ... (#{l} #{Log.count l, 'file'})"
+            #Log.info 'compiler', "starting ... (#{l} #{Log.count l, 'file'})" + JSON.stringify @files
+            Log.info 'compiler', "starting ... (#{l} #{Log.count l, 'file'})"
             return true
 
         false
@@ -148,14 +160,14 @@ class Compiler
                 error.type  = type if not error.type
                 path        = error.path
                 file        = @wz.fileMap[path]
-                if file
+                if file and error.error
                     file.errors = true
                 #TODO: handle error somehow
                 else
                     #console.log 'error in file, but file not in root: ', path
 
             t  = SW.stop 'compiler.' + type
-            Log.info type, 'compiled', t, client.errors.length, client.warnings.length
+            Log.info type, 'ready', t, client.errors.length, client.warnings.length
 
             compiled = true
             compiled = compiled and client.compiled for client in @clients
@@ -187,12 +199,7 @@ class Compiler
 
 
     exit: () ->
-        @ts.ipc.exit()
-        @coffee.ipc.exit()
-        @sass.ipc.exit()
-        @less.ipc.exit()
-        @styl.ipc.exit()
-        @assets.ipc.exit()
+        client.exit() for client in @clients
         null
 
 

@@ -17,7 +17,7 @@ Log.tickerStarted    = false
 Log.tickerText       = ''
 Log.tickerTextLength = ''
 Log.tickerTimeout    = null
-Log.typeLength       = 12
+Log.typeLength       = 10
 Log.chars            = {}
 Log.ok               = '✓'.green
 
@@ -48,7 +48,7 @@ Log.time = (timeOrId) ->
 
 
 Log.ftime = (id) ->
-    Log.time(id).black.bgWhite.bold
+    Log.time(id)
 
 
 Log.getChars = (char, length) ->
@@ -66,8 +66,8 @@ Log.lines = (args...) ->
 
 
 Log.prefix = (text) ->
-    empty = Log.getChars ' ', Log.typeLength - text.length
-    text + empty + '→ '
+    empty = Log.getChars ' ', Log.typeLength - text.length + 2
+    (text + ':') + empty # + '→ '
 
 
 Log.align = (tabs, text) ->
@@ -114,7 +114,7 @@ Log.clearTicker = () ->
 Log.tick = () ->
     clearTimeout Log.tickerTimeout
     if Log.tickerStarted
-        text                 = (Log.tickerText + " ... #{Log.ftime('Log.ticker')}").cyan
+        text                 = (Log.tickerText + " ... #{Log.ftime('Log.ticker')} ")
         oldLength            = Log.tickerTextLength
         newLength            = text.length
         dif                  = oldLength - newLength
@@ -128,16 +128,15 @@ Log.tick = () ->
 
 
 Log.info = (type, text, time, numErrors, asWarning) ->
-    empty = Log.getChars(' ', Log.typeLength - type.length)
     text  = text or ''
-    info  = Log.prefix(type).cyan + text.white
+    info  = Log.prefix(type) + text
     info += ' in ' + Log.ftime(time) if not isNaN time
     if not isNaN numErrors
         if numErrors > 0
             if not asWarning
-                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'error'}".red
+                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'error'}"
             else
-                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'warning'}".white
+                info += ' with ' + "#{numErrors} #{Log.count numErrors, 'warning'}"
         else
             info += ' ' + Log.ok
     Log info
@@ -153,8 +152,8 @@ Log.error = (errors, base) ->
     count   = errors.length
     info    = type + ' has ' + count + ' ' + Log.count(count, 'Error')
     oldPath = null
-    line    = Log.getChars ' ', info.length
-    Log.lines '', info.red, line.bgRed
+    line    = Log.getChars '‾', info.length
+    Log.lines '', info.red, line.red
 
     for error in errors
         text = error.error
@@ -162,7 +161,7 @@ Log.error = (errors, base) ->
         col  = error.col
         path = error.path
         path = '.' + path.replace(base, '') if path.indexOf(base) == 0
-        t0   = "[#{type}]:  "
+        t0   = type + ':'
 
         if not isNaN(line) and not isNaN(col)
             t1 = ("[#{line}, #{col}]")
@@ -173,13 +172,16 @@ Log.error = (errors, base) ->
         else
             t1 = Log.prefix("[common]")
 
-        l    = Log.typeLength + 2
+        l    = Log.typeLength + 3
         t0   = t0 + Log.getChars(' ', l - t0.length) + path
         t1   = t1 + Log.getChars(' ', l - t1.length)
         text = Log.align l, stripAnsi(text)
 
         if oldPath != path
-            Log.lines '', t0.red, t1.red + text.red
+            if not oldPath
+                Log.lines t0.red, t1.red + text.red
+            else
+                Log.lines '', t0.red, t1.red + text.red
         else
             Log t1.red + text.red
         oldPath = path
@@ -194,8 +196,8 @@ Log.warn = (errors, base) ->
     count   = errors.length
     info    = type + ' has ' + count + ' ' + Log.count(count, 'Warning')
     oldPath = null
-    line    = Log.getChars ' ', info.length
-    Log.lines '', info.white, line.bgWhite
+    line    = Log.getChars '‾', info.length
+    Log.lines '', info.white, line.white
 
     for error in errors
         text = error.warning
@@ -203,7 +205,7 @@ Log.warn = (errors, base) ->
         col  = error.col
         path = error.path
         path = '.' + path.replace(base, '') if path.indexOf(base) == 0
-        t0   = "[#{type}]:  "
+        t0   = type + ':'
 
         if not isNaN(line) and not isNaN(col)
             t1 = ("[#{line}, #{col}]")
@@ -214,7 +216,7 @@ Log.warn = (errors, base) ->
         else
             t1 = Log.prefix("[common]")
 
-        l    = Log.typeLength + 2
+        l    = Log.typeLength + 3
         t0   = t0 + Log.getChars(' ', l - t0.length) + path
         t1   = t1 + Log.getChars(' ', l - t1.length)
         text = Log.align l, stripAnsi(text)

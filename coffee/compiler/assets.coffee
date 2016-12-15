@@ -22,6 +22,11 @@ class AssetCompiler
     compile: (files) ->
         @errors    = []
         @openFiles = 0
+
+        if not @cfg.out
+            @compiled()
+            return
+
         for file in files
             ++@openFiles
             path = file.path

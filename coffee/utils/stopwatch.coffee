@@ -1,6 +1,13 @@
 class StopWatch
 
 
+    @instance = new StopWatch()
+
+
+    @start: (id) -> @instance.start id
+    @stop:  (id) -> @instance.stop  id
+
+
     constructor: () ->
         @map = {}
 
@@ -16,4 +23,4 @@ class StopWatch
         now - start
 
 
-module.exports = new StopWatch()
+module.exports = StopWatch

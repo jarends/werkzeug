@@ -25,14 +25,13 @@ class Server
 
     serverReady: (@port) ->
         #root = PH.getOut @cfg, 'server'
-        i = 'listening'.white + ' on port '
+        i = ' listening on port '
         p = @port.toString()
-        t = SW.stop('server')
 
         if @port == parseInt @cfg.server.port, 10
-            Log.info 'server', i + p.green, t
+            Log Log.prefix('server') + 'ready in ' + Log.ftime('server') + i + p.green
         else
-            Log.info 'server', i + p.red, t
+            Log Log.prefix('server') + 'ready in ' + Log.ftime('server') + i + p.red
         null
 
 

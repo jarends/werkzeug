@@ -45,12 +45,15 @@ class TSCompiler
         @sprogram      = null
         @ipc           = new IPC(process, @)
         @sources       = {}
-        TS.sys.readFile = @readFile
+        @nodeModules   = {}
+        TS.sys.fileExists = @fileExists
+        TS.sys.readFile   = @readFile
 
 
 
 
     init: (@cfg) ->
+        return if not @cfg.out
         @tslintCfg = {}
         @inBase    = PH.getIn  @cfg, 'ts'
         @outBase   = PH.getOut @cfg, 'ts'
@@ -139,6 +142,8 @@ class TSCompiler
         null
 
 
+
+
     removePath: (path) ->
         if @fileMap[path]
             @paths.splice @paths.indexOf(path), 1
@@ -147,8 +152,15 @@ class TSCompiler
         null
 
 
+
+
     compile: (files) ->
         try
+
+            if not @cfg.out
+                @compiled()
+                return
+
             @files = []
             for file in files
                 path = file.path
@@ -174,6 +186,8 @@ class TSCompiler
         null
 
 
+
+
     compileAll: (paths) ->
         @createProgram(paths)
 
@@ -194,6 +208,8 @@ class TSCompiler
             else
                 console.log 'diagnostic without file: ', diagnostic
         null
+
+
 
 
     compilePath: (path) ->
@@ -221,6 +237,8 @@ class TSCompiler
             for file in output.outputFiles
                 FS.writeFileSync file.name, file.text, "utf8"
         null
+
+
 
 
     addError: (error) ->
@@ -273,17 +291,45 @@ class TSCompiler
         null
 
 
-    fileExists: (path) ->
-        TS.sys.fileExists path
 
 
-    readFile:   (path) =>
+    fileExists: (path) =>
+        ###
+        name = null
+        if /node_modules/.test path
+            last       = path.lastIndexOf 'node_modules'
+            name       = path.substr last + 13
+            modulePath = @nodeModules[name]
+            src        = @sources[modulePath]
+
+            if src and /@angular\/core\/index.d.ts$/.test path
+                console.log 'found mapped node module: ', name, path
+
+            if src
+                return modulePath == path
+
+        if name and /@angular\/core\/index.d.ts$/.test path
+            console.log 'initial map node module: ', name, path
+
+        @nodeModules[name] = path if name
+        ###
+        FSU.isFile path
+
+
+
+
+    readFile: (path) =>
         src = @sources[path]
         return src if src
         @sources[path] = FS.readFileSync path, 'utf8'
 
 
+
+
     resolveModuleNames: (moduleNames, containingFile) =>
+
+        #TODO: try to hack ts module development problem here
+
         map = []
         opt = @tscfg.options
         api = {fileExists:@fileExists, readFile:@readFile}
@@ -325,6 +371,8 @@ class TSCompiler
         null
 
 
+
+
     lintFile: (path) ->
         linter = new Linter(path, @linterMap[path], linterOptions, @program)
         result = linter.lint()
@@ -336,6 +384,7 @@ class TSCompiler
                 col:     pos.character + 1
                 warning: data.failure
                 type:    'tslint'
+        null
 
 
 
@@ -344,7 +393,7 @@ class TSCompiler
         if (@initialized or not @cfg.tslint.ignoreInitial)
             SW.start 'linter'
             @lint()
-            Log.info 'tslint', 'compiled', SW.stop('linter'), @linterErrors.length, true
+            Log.info 'tslint', 'ready', SW.stop('linter'), @linterErrors.length, true
 
         @initialized = true
         @ipc.send 'compiled', 'ts', @errors.concat(@linterErrors)

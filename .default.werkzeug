@@ -18,12 +18,13 @@
         "ngTool": true
     },
     "sass": {
-        "enabled": true
+        "enabled": true,
+        "globals": []
     },
     "less": {
         "enabled": true
     },
-    "stylus": {
+    "styl": {
         "enabled": true
     },
     "assets": {
@@ -34,11 +35,15 @@
         "ignoreInitial": true
     },
     "packer": {
+        "noCache": false,
         "enabled": true,
         "nga": false,
         "bigChunks": true,
         "chunks": "./chunk_",
         "loaderPrefix": "es6-promise!",
         "packages": []
+    },
+    "builder": {
+        "enabled": false
     }
 }
