@@ -53,7 +53,8 @@ And what it can't do:
 &nbsp;  
 ### Config
 
-werkzeug looks for a '.werkzeug' file in the current directory. The file can be a json file or a js, which exports a config object.  
+werkzeug looks for a '.werkzeug' file in the current directory.   
+The file can be a json file or a js, which exports a config object.  
 If no file was found, werkzeug looks in your user home for a config.  
   
 This is the default config with all implemented options:  
@@ -174,7 +175,7 @@ The parsing is done by a simple reqex for 'require' and that's the reason for a 
 The packer doesn't handle es6 files in your project, but he compiles required es6 node_modules with babel to not break your dependencies.  
 The babel process isn't optimized and can slow down the whole packaging process if he is used excessively and the es6 detection is a little bit weird.
 &nbsp;  
-&nbsp;  
+  
 #### angular 2
 Angular 2 has the ability to load templates and styles at runtime.
 The [angular-cli](https://cli.angular.io/), which, by the way, does a very good job and i strongly recommend to use it,
@@ -187,9 +188,9 @@ However, to not break projects, which expect this behaviour, i decided to enable
  
 The second angular 2 magic is: replacing the routers 'loadChildren' list with the appropriate chunk promises.
 &nbsp;  
-&nbsp;  
+  
 #### possible bugs
-- **as i mentioned above: out commented 'require' statements are parsed by the packer and the dependencies are packed**
+- as i mentioned above: **out commented 'require' statements are parsed by the packer and the dependencies are packed**
 - individual input and output directories per compiler aren't very well tested (especially in relation to source maps)
 - input and output pointing to the same directory isn't very well tested (especially for the asset process) (**can corrupt your project, be careful!**)
 - the asset process itself can behave a little bit weird in relation to what he copies
@@ -197,6 +198,7 @@ The second angular 2 magic is: replacing the routers 'loadChildren' list with th
 - the whole process can stuck in a loop (this can happen with errors in ts files and relies on the linting strangeness)
 - (never tested on windows, sorry)    
 &nbsp;  
+  
 ### Motivation and Todos
 
 When i started working with angular 2, SystemJS and webpack i was a little bit frustrated about the complexity of configuration and the time i spent to start new projects.  
@@ -228,6 +230,7 @@ This are my current TODOS:
 #TODO: remember TREESHAKING for the build process (if it ever comes)???
 ```
 &nbsp;  
+  
 ### License
 
 werkzeug is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
