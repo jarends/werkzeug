@@ -142,5 +142,12 @@ chunkPromise.then((result) -> console.log 'myExternalModuleOrClass: ', result)
 # Otherwise they won't be activated.
 # You also have to place src nodes for each bundle in your index.html             
 ```
+&nbsp;
+### License
+
+Werkzeug is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
+
+
+
    
 
