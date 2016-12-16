@@ -2,7 +2,7 @@
 Is the german word for "tool".<br/>
 And is the compiler and packer for my projects.<br/>
 It does a little bit of the stuff, webpack and co. does for you.<br/>
-It is simple in skills but easy to use and fast.
+It is limited in its skills but easy to use and fast.<br/>
 
 Werkzeug 
 - compiles [typescript](https://www.typescriptlang.org/), [coffee](http://coffeescript.org/), [sass/scss](http://sass-lang.com/), [less](http://lesscss.org/) and [stylus](http://stylus-lang.com/)
@@ -103,7 +103,7 @@ This is the default config with all implemented options:
         
     packer:                                         
         nga:                 false # run ng-annotate (angular 1)                  
-        bigChunks:           true  # pack multy requireds into chunks instead of bundles                 
+        bigChunks:           true  # pack multi requireds into chunks instead of bundles                 
         chunks:              './chunk_'      # file name prefix for chunk files       
         loaderPrefix:        'es6-promise!'  # prefix for requiring chunks       
         enabled:             true                  
