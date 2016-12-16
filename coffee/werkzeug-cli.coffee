@@ -1,37 +1,50 @@
-WZ   = require './werkzeug'
-pkg  = require "#{__dirname}/../package"
-args = require('karg') """
-wz
-    arguments  . ? see arguments                   . ** .
-    watch      . ? watch project                   . = false
-    compile    . ? compile project                 . = false
-    pack       . ? create packages                 . = false
-    server     . ? start a server                  . = false
-    verbose    . ? log more                        . = false
-    quiet      . ? log nothing                     . = false
-    debug      . ? log debug                       . = false
-arguments
-    [no option]  project path               #{'.'.blue}
-    watch        project to watch           #{'.'.blue}
-    compile      project to compile         #{'.'.blue}
-    pack         project to pack            #{'.'.blue}
-    build        project to build           #{'.'.blue}
-    server       project to serve           #{'.'.blue}
-version  #{pkg.version}
+WZ         = require './werkzeug'
+pkg        = require "#{__dirname}/../package"
+ArgsParser = require './args-parser'
+
+
+helpText = """werkzeug (german for 'tool')
+
+Compiles and packs your project.
+Simply type 'wz' to compile and pack once.
+Type 'wz -w' if you want werkzeug to watch your files,
+compile and pack incremental and start the server.
 """
 
-#console.log 'args: ', args
+parser = new ArgsParser().parse process.argv,
+    help: helpText
+    commands: [
+        name: 'watch'
+        help: 'watches for changes, compiles and packs incremental and starts the server'
+    ,
+        name: 'help'
+        help: 'print this help'
+    ,
+        name: 'version'
+        help: 'print the version'
+    ]
 
-wz      = new WZ(args.arguments[0] or process.cwd())
-watch   = args.watch
-build   = args.build
-pack    = args.pack    or watch or build
-compile = args.compile or watch or pack
 
-#console.log 'wz.cfg: ', wz.cfg
-
-if watch
-    wz.watch()
-else
+walk = () ->
+    wz = new WZ(process.cwd())
     wz.walk()
+
+
+watch = () ->
+    wz = new WZ(process.cwd())
+    wz.watch()
+
+
+if parser.error
+    console.log 'werkzeug ERROR: ', error
+    parser.printHelp()
+else
+    if parser.cmds.length == 0
+        walk()
+    else
+        cmd = parser.cmds[0]
+        switch cmd.name
+            when 'watch'   then watch()
+            when 'help'    then parser.printHelp()
+            when 'version' then console.log 'v' + pkg.version
 

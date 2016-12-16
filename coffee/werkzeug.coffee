@@ -16,7 +16,7 @@ Log      = require('./utils/log').mapLogs()
 #TODO: add multiple in and out paths!!!
 #TODO: refactor path-helper somehow in cfg!!!
 
-#TODO: add post processors (like tslint or autoprefixer)!!!
+#TODO: add post processors (like autoprefixer)!!!
 
 #TODO: fix errors for empty project!!!
 
@@ -24,15 +24,11 @@ Log      = require('./utils/log').mapLogs()
 
 #TODO: fix errors for multiple instances in the same project
 
-#TODO: cleanup log code
-
 #TODO: set ts.noEmitOnError = true and merge packer errors back to compiler errors???
 
-#TODO: make sourcemaps optional!!!
+#TODO: make source maps optional!!!
 
 #TODO: enable cli flag for different configs, maybe run configs concurrently
-# .wz.prod -> wz prod
-# .wz.dev  -> wz dev
 
 #TODO: watch current wz config and restart app on change
 
