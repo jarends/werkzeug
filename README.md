@@ -25,6 +25,7 @@ thats all.
     
     git clone https://github.com/jarends/werkzeug.git
     cd werkzeug
+    npm install
     npm link
     
     # compile, copy and pack once
@@ -32,6 +33,14 @@ thats all.
     
     # start the watcher
     wz -w
+    
+    # example project angular 2 tour of heroes 
+    # with werkzeug as build tool
+    git clone https://github.com/jarends/angular2-tour-of-heroes-wz.git
+    cd angular2-tour-of-heroes-wz
+    npm install
+    npm start # or wz -w
+    
     
 ```
 &nbsp;
