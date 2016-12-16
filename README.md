@@ -24,8 +24,8 @@ And what it can't do:
 - no tree shaking (but i am interested)
 - no pre or post processor or loader system, you can't pimp werkzeug (werkzeug will dispatch events soon, so you can utilize it by your own build process)
 - no build or release process exists (i use googles [closure compiler](https://developers.google.com/closure/compiler/) to minify my bundles) (optimizing your project can be very special to your project and i like to keep werkzeug simple) 
-&nbsp;  
-&nbsp;  
+&nbsp;    
+  
 ### Usage
   
 ```coffee-script
