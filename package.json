@@ -1,6 +1,6 @@
 {
     "name": "werkzeug",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "compiles ts, coffee, sass/scss, less/ stylus and packs browser ready bundles",
     "main": "./js/werkzeug.js",
     "bin": {
@@ -21,7 +21,7 @@
         "bundles"
     ],
     "author": "jarends",
-    "homepage": "https://github.com/jarends/werkzeug#readme",
+    "homepage": "https://github.com/jarends/werkzeug#README",
     "repository": {
         "type": "git",
         "url": "https://github.com/jarends/werkzeug.git"
