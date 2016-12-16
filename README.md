@@ -164,7 +164,7 @@ options.outDir     # always the ts 'out' dir
 options.sourceRoot # always the relative path from 'out' to 'in'
 options.baseUrl    # always the path to werkzeugs node_modules    
 ```    
-&nbsp;  
+  
 #### packer
 The packer works on the compiled js files and parses all required dependencies.  
 Currently only es5 commonjs style modules are supported.  
