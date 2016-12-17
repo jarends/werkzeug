@@ -1,6 +1,6 @@
 {
     "name": "werkzeug",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "compiles ts, coffee, sass/scss, less/ stylus and packs browser ready bundles",
     "main": "./js/werkzeug.js",
     "bin": {
@@ -36,6 +36,7 @@
         "babel-preset-es2015": "^6.18.0",
         "body-parser": "^1.15.2",
         "chokidar": "^1.6.0",
+        "coffee": "^3.3.0",
         "colors": "^1.1.2",
         "cross-spawn": "^4.0.0",
         "emap": "0.0.5",
