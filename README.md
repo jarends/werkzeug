@@ -19,11 +19,12 @@ What werkzeug does:
      
 And what it can't do: 
  
+- no pre or post processor or loader system, you can't pimp werkzeug (werkzeug will dispatch events soon, so you can utilize it by your own build process)
 - the packer has no es2015 or es6 support (except for node_modules, but slow and only as fallback) (the ts compiler still can compile to es6)
+- no build or release process exists (i use googles [closure compiler](https://developers.google.com/closure/compiler/) to minify my bundles) (optimizing your project can be very special to your project and i like to keep werkzeug simple)
+- no live reload or browser sync (maybe i will implement this later) 
 - currently no AoT compiling for angular 2 (maybe i will work on this)
 - no tree shaking (but i am interested)
-- no pre or post processor or loader system, you can't pimp werkzeug (werkzeug will dispatch events soon, so you can utilize it by your own build process)
-- no build or release process exists (i use googles [closure compiler](https://developers.google.com/closure/compiler/) to minify my bundles) (optimizing your project can be very special to your project and i like to keep werkzeug simple) 
 &nbsp;    
   
 ### Usage

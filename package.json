@@ -1,6 +1,6 @@
 {
     "name": "werkzeug",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "compiles ts, coffee, sass/scss, less/ stylus and packs browser ready bundles",
     "main": "./js/werkzeug.js",
     "bin": {
@@ -11,14 +11,16 @@
         "start": "coffee -c -w -o ./js ./coffee"
     },
     "keywords": [
+        "werkzeug",
         "compiler",
+        "packer",
+        "bundler",
+        "bundles",
         "typescript",
         "coffeescript",
         "sass",
         "less",
-        "stylus",
-        "packer",
-        "bundles"
+        "stylus"
     ],
     "author": "jarends",
     "homepage": "https://github.com/jarends/werkzeug#README",
