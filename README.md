@@ -29,7 +29,9 @@ And what it can't do:
 ### Usage
   
 ```coffee-script
+    npm install -g werkzeug
     
+    # or, if you want to be up to date
     git clone https://github.com/jarends/werkzeug.git
     cd werkzeug
     npm install
@@ -191,8 +193,8 @@ The second angular 2 magic is: replacing the routers 'loadChildren' list with th
   
 #### possible bugs
 - as i mentioned above: **out commented 'require' statements are parsed by the packer and the dependencies are packed**
-- individual input and output directories per compiler aren't very well tested (especially in relation to source maps)
-- input and output pointing to the same directory isn't very well tested (especially for the asset process) (**can corrupt your project, be careful!**)
+- individual input and output directories per compiler aren't tested very well (especially in relation to source maps)
+- input and output pointing to the same directory isn't tested very well (especially for the asset process) (**can corrupt your project, be careful!**)
 - the asset process itself can behave a little bit weird in relation to what he copies
 - the logic for when the linting happens must be reviewed and behaves sometimes strange
 - the whole process can stuck in a loop (this can happen with errors in ts files and relies on the linting strangeness)
