@@ -51,6 +51,7 @@ class Server
 
 
     exit: ->
+        @server.close() if @server
         process.exit 0
 
 

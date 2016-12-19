@@ -61,7 +61,7 @@ class IPC extends Emitter
 
             #TODO: handle error - maybe restart forked process or entire app
             catch e
-                console.log "IPC ERROR: can not handle type '#{type}' for owner '#{@owner}!': ", JSON.stringify(e)
+                console.log "IPC ERROR: can not handle type '#{type}' for owner '#{@owner}!': ", e.toString(), e.stack
 
         if @listenerCount type
             args = args.concat()

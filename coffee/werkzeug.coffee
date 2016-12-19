@@ -48,7 +48,7 @@ class Werkzeug extends Emitter
 
 
     constructor: (base, cfg) ->
-        super
+        super()
 
         Log()
         Log.info 'werkzeug', 'starting ...'

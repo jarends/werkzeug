@@ -193,7 +193,7 @@ The second angular 2 magic is: replacing the routers 'loadChildren' list with th
 &nbsp;  
   
 #### possible bugs
-- as i mentioned above: **out commented 'require' statements are parsed by the packer and the dependencies are packed**
+- as i mentioned above: **'require' statements, which are commented out, are still parsed by the packer and the dependencies are packed**
 - individual input and output directories per compiler aren't tested very well (especially in relation to source maps)
 - input and output pointing to the same directory isn't tested very well (especially for the asset process) (**can corrupt your project, be careful!**)
 - the asset process itself can behave a little bit weird in relation to what he copies
