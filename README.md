@@ -25,7 +25,7 @@ And what it can't do:
 - no live reload or browser sync (maybe i will implement this later) 
 - currently no AoT compiling for angular 2 (maybe i will work on this)
 - no tree shaking (but i am interested)
-&nbsp;    
+      
   
 ### Usage  
   
@@ -53,7 +53,7 @@ And what it can't do:
     
     
 ```
-&nbsp;  
+  
 ### Config  
 
 werkzeug looks for a '.werkzeug' file in the current directory.   
@@ -153,7 +153,7 @@ chunkPromise.then((result) -> console.log 'myExternalModuleOrClass: ', result)
 # Otherwise they won't be activated.
 # You also have to place src nodes for each bundle in your index.html             
 ```
-&nbsp;    
+  
 ### Some Details  
 #### ts and tslint  
 werkzeug comes with a default tsconfig.json and tslint.json.  
@@ -177,7 +177,7 @@ The parsing is done by a simple reqex for 'require' and that's the reason for a 
 
 The packer doesn't handle es6 files in your project, but he compiles required es6 node_modules with babel to not break your dependencies.  
 The babel process isn't optimized and can slow down the whole packaging process if he is used excessively and the es6 detection is a little bit weird.
-&nbsp;  
+    
   
 #### angular 2  
 Angular 2 has the ability to load templates and styles at runtime.
@@ -190,7 +190,7 @@ and angular-cli ignores my decision (that's a little bit impolite).
 However, to not break projects, which expect this behaviour, i decided to enable the same impoliteness in werkzeug, but configurable ;-)
  
 The second angular 2 magic is: replacing the routers 'loadChildren' list with the appropriate chunk promises.
-&nbsp;  
+  
   
 #### possible bugs  
 - as i mentioned above: **'require' statements, which are commented out, are still parsed by the packer and the dependencies are packed**
@@ -200,7 +200,7 @@ The second angular 2 magic is: replacing the routers 'loadChildren' list with th
 - the logic for when the linting happens must be reviewed and behaves sometimes strange
 - the whole process can stuck in a loop (this can happen with errors in ts files and relies on the linting strangeness)
 - (never tested on windows, sorry)    
-&nbsp;  
+  
   
 ### Motivation and Todos  
 
@@ -232,7 +232,7 @@ This are my current TODOS:
 
 #TODO: remember TREESHAKING for the build process (if it ever comes)???
 ```
-&nbsp;  
+  
   
 ### License  
 
