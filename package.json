@@ -1,6 +1,6 @@
 {
     "name": "werkzeug",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "description": "compiles ts, coffee, sass/scss, less/ stylus and packs browser ready bundles",
     "main": "./js/werkzeug.js",
     "bin": {

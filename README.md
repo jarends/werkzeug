@@ -27,7 +27,7 @@ And what it can't do:
 - no tree shaking (but i am interested)
 &nbsp;    
   
-### Usage
+### Usage  
   
 ```coffee-script
     npm install -g werkzeug
@@ -54,7 +54,7 @@ And what it can't do:
     
 ```
 &nbsp;  
-### Config
+### Config  
 
 werkzeug looks for a '.werkzeug' file in the current directory.   
 The file can be a json file or a js, which exports a config object.  
@@ -154,12 +154,12 @@ chunkPromise.then((result) -> console.log 'myExternalModuleOrClass: ', result)
 # You also have to place src nodes for each bundle in your index.html             
 ```
 &nbsp;    
-### Some Details
-#### ts and tslint
+### Some Details  
+#### ts and tslint  
 werkzeug comes with a default tsconfig.json and tslint.json.  
 However, it also tries to read this files from your project directory so you can override the default settings.  
     
-The creation and handling of source maps is a little bit tricky. That's why the following ts compiler options can't be overridden:
+The creation and handling of source maps is a little bit tricky. That's why the following ts compiler options can't be overridden:  
 ```coffee-script
 options.sourceMap  # always true (will change, if source map creation can be turned off)
 options.rootDir    # always the ts 'in' dir
@@ -168,7 +168,7 @@ options.sourceRoot # always the relative path from 'out' to 'in'
 options.baseUrl    # always the path to werkzeugs node_modules    
 ```    
   
-#### packer
+#### packer  
 The packer works on the compiled js files and parses all required dependencies.  
 Currently only es5 commonjs style modules are supported.  
   
@@ -179,7 +179,7 @@ The packer doesn't handle es6 files in your project, but he compiles required es
 The babel process isn't optimized and can slow down the whole packaging process if he is used excessively and the es6 detection is a little bit weird.
 &nbsp;  
   
-#### angular 2
+#### angular 2  
 Angular 2 has the ability to load templates and styles at runtime.
 The [angular-cli](https://cli.angular.io/), which, by the way, does a very good job and i strongly recommend to use it,
 replaces the 'templateUrl' and 'styleUrls' properties in the <code>@Component</code> decorator with the related 
@@ -192,7 +192,7 @@ However, to not break projects, which expect this behaviour, i decided to enable
 The second angular 2 magic is: replacing the routers 'loadChildren' list with the appropriate chunk promises.
 &nbsp;  
   
-#### possible bugs
+#### possible bugs  
 - as i mentioned above: **'require' statements, which are commented out, are still parsed by the packer and the dependencies are packed**
 - individual input and output directories per compiler aren't tested very well (especially in relation to source maps)
 - input and output pointing to the same directory isn't tested very well (especially for the asset process) (**can corrupt your project, be careful!**)
@@ -202,7 +202,7 @@ The second angular 2 magic is: replacing the routers 'loadChildren' list with th
 - (never tested on windows, sorry)    
 &nbsp;  
   
-### Motivation and Todos
+### Motivation and Todos  
 
 When i started working with angular 2, SystemJS and webpack i was a little bit frustrated about the complexity of configuration and the time i spent to start new projects.  
 The only thing i wanted to do was coding.    
@@ -234,7 +234,7 @@ This are my current TODOS:
 ```
 &nbsp;  
   
-### License
+### License  
 
 werkzeug is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
 
