@@ -59,7 +59,8 @@ class PathHelper
 
 
     @getType: (path) ->
-        ext = /\.(\w*)$/.exec(path)[1]
+        result = /\.(\w*)$/.exec(path)
+        ext = if result then result[1] else null
         TYPES[ext] or 'assets'
 
 

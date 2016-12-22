@@ -8,7 +8,7 @@ __log     = console.log
 
 Log = (args...) ->
     Log.clearTicker()
-    Log.log.apply Log.console, args
+    Log.log.apply console, args
 
 
 Log.console          = console

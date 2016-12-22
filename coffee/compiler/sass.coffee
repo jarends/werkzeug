@@ -1,7 +1,7 @@
 Path = require 'path'
 FSE  = require 'fs-extra'
 FS   = require 'fs'
-Sass = require 'node-sass'
+Sass = null
 _    = require '../utils/pimped-lodash'
 PH   = require '../utils/path-helper'
 IPC  = require '../utils/ipc'
@@ -17,6 +17,13 @@ class SassCompiler
         @errors      = null
         @openFiles   = 0
         @ipc         = new IPC(process, @)
+
+        console.log 'sass constructor: ', process.versions
+
+        try
+            Sass = require 'node-sass'
+        catch e
+            console.log 'SAS require ERROR: ', e.toString(), e. stack
 
 
     init: (@cfg) ->
