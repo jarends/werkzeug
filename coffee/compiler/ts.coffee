@@ -338,6 +338,9 @@ class TSCompiler
 
             if result.resolvedModule
                 map.push result.resolvedModule
+            else if moduleName == 'tslib'
+                console.log 'resolve tslib: ', Path.resolve('../../node_modules/tslib')
+                map.push Path.resolve('../../node_modules/tslib')
             else
                 map.push undefined
         map
