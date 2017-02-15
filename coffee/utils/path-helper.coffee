@@ -18,7 +18,7 @@ class PathHelper
     @sass   : /\.sass$|\.scss$/
     @less   : /\.less$/
     @styl   : /\.styl$/
-    @ts     : /\.ts$/
+    @ts     : /\.ts$|\.tsx$/
     @coffee : /\.coffee$/
     @js     : /\.js$/
     @jsMap  : /\.js\.map$/

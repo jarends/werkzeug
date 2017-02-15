@@ -30,7 +30,7 @@ class Pack
                 try
                     r m, m.exports, m.require
                 catch e
-                    console.log "Error requiring '#{index}': ", e.stack
+                    console.log "Error requiring '#{index}': ", e.toString(), e.stack
             else
                 console.log "Error requiring '#{index}': module doesn't exist"
             m.exports

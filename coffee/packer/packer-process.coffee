@@ -15,7 +15,7 @@ PACK_CODE          = FS.readFileSync Path.join(__dirname, 'pack.js'),  'utf8'
 CHUNK_CODE         = FS.readFileSync Path.join(__dirname, 'chunk.js'), 'utf8'
 MULTI_COMMENT_MAP  = /\/\*\s*[@#]\s*sourceMappingURL\s*=\s*([^\s]*)\s*\*\//g
 SINGLE_COMMENT_MAP = /\/\/\s*[@#]\s*sourceMappingURL\s*=\s*([^\s]*)($|\n|\r\n?)/g
-
+ENV                = 'development'
 
 #TODO: make chunk loader mechanism more dynamic (currently only Promis variant available)
 
@@ -23,7 +23,10 @@ SINGLE_COMMENT_MAP = /\/\/\s*[@#]\s*sourceMappingURL\s*=\s*([^\s]*)($|\n|\r\n?)/
 getPackCode = (p) -> """
 (function(pack)
 {
-    var cfg = {
+    var win = window,
+        process = win.process || (win.process = {})
+        env     = process.env || (process.env = {})
+        cfg     = {
         index:      #{p.index},
         total:      #{p.total},
         startIndex: #{p.file.index},
@@ -31,6 +34,7 @@ getPackCode = (p) -> """
         path:       '#{p.file.path}',
         pack:       pack
     };
+    env.NODE_ENV = env.NODE_ENV || '#{p.env}'
     var packer = #{if p.index == 0 then PACK_CODE else CHUNK_CODE}
     packer.init(cfg);
 })({
@@ -105,9 +109,13 @@ class Packer
 
 
     init: (@cfg) ->
-        @id  = Math.random() + '_' + Date.now()
-        @nga = @cfg.packer.nga or false
-        @out = PH.getOut @cfg, 'packer'
+        @id        = Math.random() + '_' + Date.now()
+        @nga       = @cfg.packer.nga or false
+        @useBabel  = not @cfg.packer.disableBabelFallback
+        @useUglify = @cfg.packer.uglify == true
+        @env       = @cfg.packer.env or {}
+        @NODE_ENV  = @env.NODE_ENV   or 'development'
+        @out       = PH.getOut @cfg, 'packer'
         null
 
 
@@ -126,9 +134,9 @@ class Packer
             @errors = []
             updated = {}
             for f in files
-                path = PH.outFromIn @cfg, 'packer', f.path, true
+                path = PH.outFromIn @cfg, null, f.path, true
                 file = @fileMap[path]
-
+                #console.log 'update file: ', path, f.path
                 continue if not file or updated[path]
                 updated[path] = true
                 @clear file
@@ -196,8 +204,6 @@ class Packer
         @chunks       = []
         packages      = @cfg.packer.packages or []
 
-        #TODO: delete existing chunk files!!!
-
         # clear loader data
         for path of @fileMap
             file = @fileMap[path]
@@ -208,6 +214,7 @@ class Packer
         for pack, i in packages by -1
             path = Path.join @out, pack.in
             file = @fileMap[path]
+
             p =
                 file:       file
                 index:      i
@@ -217,6 +224,7 @@ class Packer
                 req:        {}
                 loaders:    {}
                 code:       ''
+                env:        @NODE_ENV
                 numModules: 0
 
             @packs.push p
@@ -330,7 +338,7 @@ class Packer
     initSourceMapping: (pack, type) ->
         if type == 'pack'
             if pack.index == 0
-                @lineOffset = 194
+                @lineOffset = 194 + 4
             else
                 @lineOffset = 50
         else
@@ -429,20 +437,19 @@ class Packer
             source = source.replace /'/g, (args...) ->
                 if args[2][args[1] - 1] != '\\' then "\\'" else "'"
 
+            #TODO: check, if this causes problems with JMin
             # surround with quotes
             source = "'#{source}'"
 
             #TODO: maybe do JSON.parse to check for json -> currently json files without extension can't be required
             if /.json$/.test file.path
                 source = "JSON.parse(#{JMin source})"
-
             # replace newlines with \n
             source = source.replace /\r\n|\n/g, '\\n'
 
             # html can have nested requireds: ${require('path/to/html')}
             if /.html$/.test file.path
                 source = source.replace /\${\s*(require\s*\(\s*\d*?\s*\))\s*}/g, "' + $1 + '"
-
             code += "function(module, exports, require) {\r\nmodule.exports = #{source};\r\n},\r\n"
             @addSourceMap p, file, true
 
@@ -491,12 +498,27 @@ class Packer
                     col:   -1
                     error: 'file read error'
             else
+
+                # uglify
+                if @cfg.packer.uglify
+                    source  = source.replace /process\.env\.NODE_ENV/g, 'NODE_ENV'
+                    @uglify = @uglify or require 'uglify-js'
+                    result  = @uglify.minify source,
+                        fromString: true
+                        compress:
+                            global_defs:
+                                'NODE_ENV': @cfg.packer.env?.NODE_ENV or ENV
+
+                    source = result.code
+
+
                 #TODO: babel should be a compiler
                 # use babel if file is in node-modules and isn't an umd module and has an import statement
-                if /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
+                if @useBabel and /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
                     result = Babel.transform source, babelOptions
                     source = result.code
-                    #console.log 'babel transformed: ' + path
+                    console.log 'babel transformed: ' + path
+
 
                 # handle source map
                 if PH.testJS(path)
@@ -580,14 +602,33 @@ class Packer
                     return "require(#{rfile.index}, '#{@getChunkPath rfile}')"
                 return "require(#{rfile.index})"
             else
-                @errors.push
-                    path:  path
-                    line:  -1
-                    col:   -1
-                    error: 'packer.parseFile: module "' + name + '" not found'
+                if not @isComment file.source, args[4]
+                    @errors.push
+                        path:  path
+                        line:  -1
+                        col:   -1
+                        error: 'packer.parseFile: module "' + name + '" not found'
 
             args[0]
         null
+
+
+    isComment: (text, index) ->
+        sameLine      = true
+        behindComment = false
+        while --index > -1
+            char1         = text[index]
+            char2         = text[index + 1]
+            chars         = char1 + char2
+            sameLine      = sameLine and char1 != '\n'
+            insideComment = chars == '/*'
+            behindComment = chars == '*/'
+            return true  if sameLine and chars == '//'
+            return true  if insideComment
+            return false if behindComment
+        return false
+
+
 
 
 
