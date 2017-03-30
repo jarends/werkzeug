@@ -164,7 +164,7 @@ class Packer
         path = file.path
         for reqPath of file.req
             req = @fileMap[reqPath]
-            delete req.ref[path]
+            delete req.ref[path] if req
             delete file.req[reqPath]
 
         for loderPath of file.reqAsL
@@ -499,25 +499,29 @@ class Packer
                     error: 'file read error'
             else
 
-                # uglify
-                if @cfg.packer.uglify
-                    source  = source.replace /process\.env\.NODE_ENV/g, 'NODE_ENV'
-                    @uglify = @uglify or require 'uglify-js'
-                    result  = @uglify.minify source,
-                        fromString: true
-                        compress:
-                            global_defs:
-                                'NODE_ENV': @cfg.packer.env?.NODE_ENV or ENV
+                if /\.js$/.test path
+                    # uglify
+                    if @cfg.packer.uglify
+                        source  = source.replace /process\.env\.NODE_ENV/g, 'NODE_ENV'
+                        @uglify = @uglify or require 'uglify-js'
+                        try
+                            result  = @uglify.minify source,
+                                fromString: true
+                                compress:
+                                    global_defs:
+                                        'NODE_ENV': @cfg.packer.env?.NODE_ENV or ENV
+                        catch e
+                            console.log 'error while uglifying: ', path, e
 
-                    source = result.code
+                        source = result.code if result
 
 
-                #TODO: babel should be a compiler
-                # use babel if file is in node-modules and isn't an umd module and has an import statement
-                if @useBabel and /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
-                    result = Babel.transform source, babelOptions
-                    source = result.code
-                    console.log 'babel transformed: ' + path
+                    #TODO: babel should be a compiler
+                    # use babel if file is in node-modules and isn't an umd module and has an import statement
+                    if @useBabel and /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
+                        result = Babel.transform source, babelOptions
+                        source = result.code
+                        console.log 'babel transformed: ' + path
 
 
                 # handle source map
