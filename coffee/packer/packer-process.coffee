@@ -521,7 +521,7 @@ class Packer
                     if @useBabel and /node_modules/.test(path) and not /\.umd\./.test(path) and /((^| )import )|((^| )class )|((^| )let )|((^| )const |((^| )export ))/gm.test(source)
                         result = Babel.transform source, babelOptions
                         source = result.code
-                        console.log 'babel transformed: ' + path
+                        console.log 'babel:       transformed -> ' + Path.relative @cfg.base, path
 
 
                 # handle source map
