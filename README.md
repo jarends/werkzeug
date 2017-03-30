@@ -113,12 +113,13 @@ This is the default config with all implemented options:
         enabled:             true    
         
     packer:                                         
-        nga:                 false # run ng-annotate (angular 1)                  
-        bigChunks:           true  # pack multi 'requireds' into chunks instead of bundles                 
+        nga:                 false           # run ng-annotate (angular 1)                  
+        bigChunks:           false           # pack multi 'requireds' into chunks instead of bundles                 
         chunks:              './chunk_'      # file name prefix for chunk files       
         loaderPrefix:        'es6-promise!'  # prefix for requiring chunks       
+        uglify:              false           # uglify all packed files -> makes initial packing verry slow
         enabled:             true                  
-        packages:            [] # in/out config for packing bundles                                    
+        packages:            [] # in/out config for packing bundles -> relative to global in/out                                   
           
 
 # If no config can be found all files will be compiled 
