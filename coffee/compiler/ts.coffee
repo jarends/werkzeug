@@ -149,6 +149,7 @@ class TSCompiler
             @paths.splice @paths.indexOf(path), 1
             delete @fileMap[path]
         delete @linterMap[path]
+        delete @sources[path]
         null
 
 
@@ -156,24 +157,25 @@ class TSCompiler
 
     compile: (files) ->
         try
-
             if not @cfg.out
                 @compiled()
                 return
 
             @files = []
+            removed = false
             for file in files
                 path = file.path
                 if not file.removed
                     @addPath path # updates version, if already added
                     @files.push @fileMap[path]
                 else
+                    removed = true
                     @removePath path
 
             @errors = []
             @createService() if not @service
 
-            if not @initialized or files.length > 20
+            if not @initialized or files.length > 20 or removed
                 @compileAll @paths
             else
                 @program = @service.getProgram()
