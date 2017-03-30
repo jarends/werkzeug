@@ -18,12 +18,15 @@ class CompilerClient
 
 
     constructor: (@type, @compiler) ->
-        path      = Path.join __dirname, 'compiler', @type
         @cfg      = @compiler.cfg
-        @ipc      = new IPC(CP.fork(path), @compiler)
         @root     = PH.getIn @cfg, @type
         @compiled = false
         @files    = null
+
+
+    init: () ->
+        path = Path.join __dirname, 'compiler', @type
+        @ipc = new IPC(CP.fork(path), @compiler)
         @ipc.send 'init', @cfg
 
 
@@ -43,6 +46,7 @@ class CompilerClient
 
     compile: () ->
         if @files.length
+            @init() if not @ipc
             @ipc.send 'compile', @files
         else
             @compiled = true
@@ -50,7 +54,7 @@ class CompilerClient
 
 
     exit: () ->
-        @ipc.exit()
+        @ipc.exit() if @ipc
         null
 
 
