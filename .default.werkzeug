@@ -35,16 +35,12 @@
         "ignoreInitial": true
     },
     "packer": {
-        "uglify": false,
-        "noCache": false,
-        "enabled": true,
         "nga": false,
         "bigChunks": false,
         "chunks": "./chunk_",
         "loaderPrefix": "es6-promise!",
+        "uglify": false,
+        "enabled": true,
         "packages": []
-    },
-    "builder": {
-        "enabled": false
     }
 }

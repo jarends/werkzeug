@@ -44,13 +44,13 @@ class ArgsParser
                         arg:  arg
 
             else if arg
-                if /$(--|-)/.test arg
-                    @error = "thelma-args-parser ERROR: unknown command \"#{arg}\"."
+                if /^(--|-)/.test arg
+                    @error = "unknown command \"#{arg}\"."
                     return @
                 else if @args.length == 1
                     result = @getDefaultCmd(arg)
                 else
-                    @error = "thelma-args-parser ERROR: unexpected argument \"#{arg}\"."
+                    @error = "unexpected argument \"#{arg}\"."
                     return @
 
             if result
@@ -88,6 +88,11 @@ class ArgsParser
         help = @cfg.help
         console.log '\n' + help + '\n' if help
 
+        @printCommands()
+        null
+
+
+    printCommands: () ->
         sm = 0
         lg = 0
         for cmd in @cfg.commands

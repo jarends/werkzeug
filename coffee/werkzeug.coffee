@@ -7,7 +7,6 @@ Walker   = require './walker'
 Watcher  = require './watcher'
 Compiler = require './compiler'
 Packer   = require './packer'
-Builder  = require './builder'
 FSU      = require './utils/fsu'
 PH       = require './utils/path-helper'
 Log      = require('./utils/log').mapLogs()
@@ -60,7 +59,7 @@ class Werkzeug extends Emitter
         @compiler    = new Compiler(@)
         @packer      = new Packer  (@) if @cfg.packer.enabled and @cfg.out
         @server      = new Server  (@) if @cfg.server.enabled and @cfg.out
-        @builder     = new Builder (@) if @cfg.builder.enabled
+        @inDir       = Path.join @cfg.base, @cfg.in
         @errors      = []
         @files       = []
         @fileMap     = {}
@@ -109,13 +108,13 @@ class Werkzeug extends Emitter
 
     compile: () ->
         return if not @idle
+        if @initialized
+            Log.startTicker 'compiling'
+        else
+            Log.setTicker 'compiling'
+
         @idle     = false
         compiling = @compiler.compile()
-        if compiling
-            if @initialized
-                Log.startTicker 'compiling'
-            else
-                Log.setTicker 'compiling'
 
         @cleanFiles()
         @dirty = false
@@ -124,7 +123,7 @@ class Werkzeug extends Emitter
             @idle = true
             if not @watcher.watching
                 @pack()
-            else if not @initialized
+            else if not @initialized or not @packer
                 @packed()
         null
 
@@ -220,6 +219,8 @@ class Werkzeug extends Emitter
 
 
     fileAdded: (path) ->
+        return null if path.indexOf(@inDir) != 0
+
         file = @fileMap[path]
         if file
             file.removed = false

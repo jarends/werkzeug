@@ -38,6 +38,9 @@ And what it can't do:
     npm install
     npm link
     
+    # copy the default config
+    wz -i
+    
     # compile, copy and pack once
     wz
     
@@ -58,7 +61,8 @@ And what it can't do:
 
 werkzeug looks for a '.werkzeug' file in the current directory.   
 The file can be a json file or a js, which exports a config object.  
-If no file was found, werkzeug looks in your user home for a config.  
+~~If no file was found, werkzeug looks in your user home for a config.~~  
+With 'wz -i' you can copy the default config to your project.   
   
 This is the default config with all implemented options:  
 ('assets' is the copying process)  
@@ -122,11 +126,6 @@ This is the default config with all implemented options:
         packages:            [] # in/out config for packing bundles -> relative to global in/out                                   
           
 
-# If no config can be found all files will be compiled 
-# from the input dir './src' to the output dir './.wz.tmp'.
-# So, you can easily start without any config, if you put your app in a src folder ;-)
-          
-          
 # The simplest config, which compiles all files from './src' to './dist' 
 # and packs the file './dist/main.js' (maybe compiled from './src/main.ts') 
 # and all its required files to the bundle './dist/main.bundle.js'.
